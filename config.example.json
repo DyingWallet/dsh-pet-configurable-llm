@@ -1,0 +1,45 @@
+{
+  "identity": {
+    "name": "桌宠"
+  },
+  "listen": {
+    "host": "127.0.0.1",
+    "port": 8790
+  },
+  "dsh": {
+    "baseUrl": "",
+    "workspacePath": "D:/deepseek_workspace",
+    "agentPreset": "pet-chat",
+    "fallbackPreset": "",
+    "model": {
+      "provider": "deepseek-account",
+      "model": "deepseek-flash"
+    },
+    "timeoutMs": 55000,
+    "rediscoverMs": 15000
+  },
+  "memory": {
+    "root": "",
+    "cardFile": "",
+    "maxChars": 16000,
+    "injectCard": true,
+    "refreshMs": 600000
+  },
+  "models": {
+    "xi": "main"
+  },
+  "defaultModel": "xi",
+  "log": {
+    "level": "info",
+    "file": ""
+  },
+  "memoryService": {
+    "endpoint": "http://127.0.0.1:8787",
+    "tokenFile": "",
+    "scene": "pet",
+    "recallK": 3,
+    "recallMaxChars": 800,
+    "timeoutMs": 800,
+    "ingest": true
+  }
+}

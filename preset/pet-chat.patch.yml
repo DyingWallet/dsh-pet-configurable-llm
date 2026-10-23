@@ -1,0 +1,67 @@
+# ============================================================
+# pet-chat —— 桌宠的专用只读 Agent preset
+# ------------------------------------------------------------
+# 用法：由 scripts/apply-preset.ps1 插入到
+#   %USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml
+# 然后重启 DSH 桌面版。不要手工编辑本文件以外的 profile。
+#
+# 依赖：qq-agent-presets 包（提供 qq-tool-restrict 只读守卫）。
+# 工具白名单：read / read_image / glob / grep / web_search / web_fetch；
+# 没有 shell、没有 write/edit、没有 subagent、没有 MCP 资源读取。
+# ============================================================
+- insert:
+    - id: preset-pet-chat
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: pet-chat
+        name: 桌宠
+        description: 桌宠的专用只读 Agent：同一个工作区、同一份 memories/，只读不写；回复短句，直接进桌面气泡。
+        order: 20
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                You are a coding agent powered by the {{model}} model.
+                【桌宠形态】你是桌宠，现在以桌宠的形态说话。回复保持 1–3 句、口语、自然；不要用 Markdown 表格、标题或代码块，气泡只有 10 秒；不要把【现在…】【桌宠形态】这类标记写进回复。
+                【记忆】你的长期记忆在 D:\deepseek_workspace\memories。启动卡由桥接注入；需要细节时先用 read 读 D:\deepseek_workspace\memories\.meta\pet-memory-card.md 或 memories/index.md，再按索引读对应文件。涉及过去的事先查记忆，不要编。
+                【只读边界】你只有读文件、检索、联网只读三类工具；不能写文件、不能执行命令、不能装软件、不能派生子 agent。写入类工具即使出现在清单里也会被守卫拒绝。
+                【隐私】不要主动输出凭据、令牌、QQ 号、内网地址或本机完整路径；用户问起时只说“存在/在某个记忆文件里”，不要复述原文。
+                【暗号】如果用户问“暗号/身份暗号”，先读 D:\deepseek_workspace\memories\.meta\identity-canary.md 再回答；读不到就说读不到，不要猜。
+                【场景】你的回答会直接显示在桌面小窗的气泡里；用户看不到你的工具调用过程，所以不要把“我查了文件”当成正文。直接回答。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: qq-tool-restrict
+            name: qq-agent-presets/qq-tool-restrict.mjs
+            config:
+              profile: readonly-agent
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024

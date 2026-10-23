@@ -1,0 +1,15 @@
+{
+  "name": "dsh-pet-configurable-llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenAI-compatible brain bridge: dsh-pet -> DSH session with the same workspace and memories.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "check": "node test/run-all.mjs",
+    "pet": "node tools/pet.mjs"
+  }
+}
