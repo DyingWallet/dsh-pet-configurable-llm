@@ -4,3 +4,4 @@ import './config.test.mjs';
 import './memory-card.test.mjs';
 import './server.test.mjs';
 import './patch-dsh-pet.test.mjs';
+import './orphan-guard.test.mjs';

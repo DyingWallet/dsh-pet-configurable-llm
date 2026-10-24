@@ -7,6 +7,7 @@ import { buildMemoryCard } from './memory-card.mjs';
 import { createMemoryService } from './memory.mjs';
 import { patchDshPetClient } from './patch-dsh-pet.mjs';
 import { DshBrain } from './dsh.mjs';
+import { createDshGuard } from './guard.mjs';
 import { createPetBrainServer } from './server.mjs';
 
 const CHECK = process.argv.includes('--check');
@@ -100,6 +101,20 @@ logger.info(`pet-brain 已监听 http://${loaded.config.listen.host}:${loaded.co
 logger.info(`令牌文件：${loaded.tokenFile}`);
 logger.info(`DSH preset：${loaded.config.dsh.agentPreset}；工作区：${loaded.config.dsh.workspacePath}`);
 
+// 孤儿保护：pet-brain 由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
+// DSH 关闭/崩溃后连续 3 次探活失败（默认 30 秒一次，约 90 秒）就退出，
+// 免得留下占着 8790 的僵尸后端。PET_BRAIN_ORPHAN_GUARD=0 可关掉（本地调试用）。
+const orphanGuard = createDshGuard({
+  probe: () => brain.probe(),
+  logger,
+  probeMs: loaded.config.lifecycle.probeMs,
+  maxMisses: loaded.config.lifecycle.maxMisses,
+  onOrphan: () => shutdown('orphan'),
+});
+const guardEnabled = loaded.config.lifecycle.orphanGuard && process.env.PET_BRAIN_ORPHAN_GUARD !== '0';
+if (guardEnabled) orphanGuard.start();
+else logger.warn('孤儿保护已关闭（lifecycle.orphanGuard=false 或 PET_BRAIN_ORPHAN_GUARD=0）');
+
 const refreshTimer = setInterval(() => {
   try {
     memory.refresh();
@@ -114,6 +129,7 @@ async function shutdown(signal) {
   if (closing) return;
   closing = true;
   logger.info(`收到 ${signal}，正在关闭…`);
+  orphanGuard.stop();
   clearInterval(refreshTimer);
   await new Promise((resolve) => server.close(() => resolve()));
   await brain.close();

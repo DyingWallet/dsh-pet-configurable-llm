@@ -502,6 +502,29 @@ export class DshBrain {
     return result;
   }
 
+  /**
+   * 轻量存活探测：只确认「DSH 端点可达」，不打任何 RPC，也不改 this.api。
+   * 供孤儿保护（guard.mjs）使用——DSH 桌面版每次重启换随机端口，固定地址不通时
+   * 再走一次自动发现，所以正常重启不会被误判成下线。
+   */
+  async probe() {
+    if (this.closed) return false;
+    const configured = String(this.config.dsh.baseUrl ?? '').trim() || String(process.env.DSH_WEB_URL ?? '').trim();
+    const candidates = [];
+    for (const candidate of [configured || this.baseUrl, '']) {
+      if (!candidates.includes(candidate)) candidates.push(candidate);
+    }
+    for (const candidate of candidates) {
+      try {
+        const resolved = await resolveDshBaseUrl(candidate, { timeoutMs: 800, discover: true });
+        if (resolved.reachable === true) return true;
+      } catch {
+        // 换下一个候选
+      }
+    }
+    return false;
+  }
+
   async health() {
     try {
       const api = await this.ensureClient();

@@ -30,6 +30,8 @@ const DEFAULTS = {
     timeoutMs: 800,
     ingest: true,
   },
+  // 孤儿保护：pet-brain 跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 30 秒 = 90 秒。
+  lifecycle: { orphanGuard: true, probeMs: 30_000, maxMisses: 3 },
   models: { xi: 'main' },
   defaultModel: 'xi',
   log: { level: 'info', file: '' },
@@ -121,6 +123,18 @@ function normalizeConfig(raw, logger) {
   cfg.defaultModel = String(cfg.defaultModel || Object.keys(cfg.models)[0]);
   if (!Object.hasOwn(cfg.models, cfg.defaultModel)) {
     throw new Error(`defaultModel "${cfg.defaultModel}" 不在 models 里`);
+  }
+  if (!isObject(cfg.lifecycle)) cfg.lifecycle = { ...DEFAULTS.lifecycle };
+  if (typeof cfg.lifecycle.orphanGuard !== 'boolean') cfg.lifecycle.orphanGuard = DEFAULTS.lifecycle.orphanGuard;
+  if (
+    !Number.isFinite(cfg.lifecycle.probeMs) ||
+    cfg.lifecycle.probeMs < 5_000 ||
+    cfg.lifecycle.probeMs > 600_000
+  ) {
+    throw new Error('lifecycle.probeMs 必须是 5000–600000 的毫秒数');
+  }
+  if (!Number.isInteger(cfg.lifecycle.maxMisses) || cfg.lifecycle.maxMisses < 1 || cfg.lifecycle.maxMisses > 60) {
+    throw new Error('lifecycle.maxMisses 必须是 1–60 的整数');
   }
   if (!isObject(cfg.log)) cfg.log = { ...DEFAULTS.log };
   cfg.log.level = ['debug', 'info', 'warn', 'error'].includes(cfg.log.level) ? cfg.log.level : 'info';
