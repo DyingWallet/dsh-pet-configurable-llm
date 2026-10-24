@@ -24,7 +24,20 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $revive = Join-Path $PSScriptRoot 'revive.mjs'
 $runHidden = Join-Path $PSScriptRoot 'run-hidden.vbs'
-$node = 'D:\Software\dsh\resources\runtime\primary-runtime\dependencies\node\bin\node.exe'
+$node = $env:MEMD_NODE
+if (-not $node -or -not (Test-Path -LiteralPath $node)) {
+  # Prefer the workspace portable node: a task that keeps running the DSH bundled
+  # node.exe locks the DSH install dir and breaks its updater.
+  $portable = Join-Path $root '..\tools\node\node.exe'
+  if (Test-Path -LiteralPath $portable) { $node = (Resolve-Path -LiteralPath $portable).Path }
+}
+if (-not $node -or -not (Test-Path -LiteralPath $node)) {
+  $node = 'D:\Software\dsh\resources\runtime\primary-runtime\dependencies\node\bin\node.exe'
+}
+if (-not $node -or -not (Test-Path -LiteralPath $node)) {
+  $fromPath = Get-Command node -ErrorAction SilentlyContinue
+  if ($fromPath) { $node = $fromPath.Source }
+}
 
 function Get-ExistingTask([string]$Name) {
   try { return Get-ScheduledTask -TaskName $Name -ErrorAction Stop } catch { return $null }

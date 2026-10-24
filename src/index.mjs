@@ -1,6 +1,8 @@
 // 模型服务入口：
 //   node src/index.mjs           启动 OpenAI 兼容服务
 //   node src/index.mjs --check   只体检（配置/记忆卡/DSH/preset），不起服务
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { createLogger } from './logger.mjs';
 import { buildMemoryCard } from './memory-card.mjs';
@@ -100,6 +102,18 @@ await new Promise((resolve, reject) => {
 logger.info(`模型服务已监听 http://${loaded.config.listen.host}:${loaded.config.listen.port}/v1`);
 logger.info(`令牌文件：${loaded.tokenFile}`);
 logger.info(`DSH preset：${loaded.config.dsh.agentPreset}；工作区：${loaded.config.dsh.workspacePath}`);
+
+// 记下自己用的 node 运行时：doctor 靠它判断有没有服务还在用 DSH 自带的 node.exe
+// （那会锁住 DSH 安装目录，升级时改名失败 WinError 32）。
+try {
+  writeFileSync(
+    path.join(loaded.stateDir, 'runtime.json'),
+    `${JSON.stringify({ service: 'pet-llm', node: process.execPath, version: process.version, pid: process.pid, startedAt: new Date().toISOString() }, null, 2)}\n`,
+    'utf8',
+  );
+} catch {
+  // 只影响自检
+}
 
 // 孤儿保护：本服务由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
 // DSH 关闭/崩溃后连续 3 次探活失败（默认 20 秒一次，约 60 秒）就退出，

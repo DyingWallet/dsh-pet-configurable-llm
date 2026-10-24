@@ -15,14 +15,19 @@ $root = Split-Path -Parent $PSScriptRoot
 
 $candidates = @()
 if ($env:NODE_EXE) { $candidates += $env:NODE_EXE }
+if ($env:MEMD_NODE) { $candidates += $env:MEMD_NODE }
+# Workspace portable node first: running the DSH bundled node.exe would lock the
+# DSH install directory and break its updater.
+$candidates += (Join-Path $root '..\tools\node\node.exe')
 $candidates += 'D:\Software\dsh\resources\runtime\primary-runtime\dependencies\node\bin\node.exe'
 $fromPath = Get-Command node -ErrorAction SilentlyContinue
 if ($fromPath) { $candidates += $fromPath.Source }
 
 $node = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 if (-not $node) {
-  throw 'node.exe not found. Set NODE_EXE, or make sure the DSH bundled node exists.'
+  throw 'node.exe not found. Set NODE_EXE, or run pnpm fetch:node in memory-hub.'
 }
+$node = (Resolve-Path -LiteralPath $node).Path
 
 $entry = Join-Path $root 'src\index.mjs'
 if (-not (Test-Path -LiteralPath $entry)) { throw "entry not found: $entry" }
