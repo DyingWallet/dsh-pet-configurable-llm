@@ -39,6 +39,12 @@
     "scene": "pet",
     "recallK": 3,
     "recallMaxChars": 800,
+    "live": {
+      "k": 6,
+      "minutes": 30,
+      "scenes": ["main"],
+      "maxChars": 400
+    },
     "timeoutMs": 800,
     "ingest": true
   }

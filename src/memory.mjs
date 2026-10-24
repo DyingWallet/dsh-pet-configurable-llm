@@ -28,6 +28,18 @@ export function createMemoryService(config, logger) {
   const timeoutMs = Number(cfg.timeoutMs) || 800;
   const recallK = Number(cfg.recallK) || 3;
   const maxChars = Number(cfg.recallMaxChars) || 800;
+  // "Live" = the newest short-term chat from another scene (the main session),
+  // so the pet can tell what the owner is in the middle of. Disabled with
+  // `"live": false`.
+  const live =
+    cfg.live === false
+      ? undefined
+      : {
+          k: Number(cfg.live?.k) || 6,
+          minutes: Number(cfg.live?.minutes) || 30,
+          scenes: Array.isArray(cfg.live?.scenes) ? cfg.live.scenes : ['main'],
+          maxChars: Number(cfg.live?.maxChars) || 400,
+        };
 
   function readToken() {
     try {
@@ -50,6 +62,12 @@ export function createMemoryService(config, logger) {
     return response.json();
   }
 
+  function formatClock(value) {
+    const date = new Date(String(value ?? ''));
+    if (Number.isNaN(date.getTime())) return '';
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')} `;
+  }
+
   async function recallBlock(messages) {
     if (!Array.isArray(messages) || messages.length === 0) return '';
     try {
@@ -58,18 +76,42 @@ export function createMemoryService(config, logger) {
         .filter((message) => message.text.length > 0)
         .slice(-6);
       if (usable.length === 0) return '';
-      const data = await call('/v1/recall', { messages: usable, k: recallK, scene });
-      const results = Array.isArray(data?.results) ? data.results : [];
-      if (results.length === 0) return '';
-      const perLine = Math.max(120, Math.floor(maxChars / results.length));
-      const lines = ['【长期记忆】（只是背景，不要原样复述）'];
-      for (const result of results) {
-        const text = String(result?.render?.text ?? result?.title ?? '').trim();
-        if (!text) continue;
-        const marker = result?.disclosure === 'owner_initiated' ? '（对方自己提起过的）' : '';
-        lines.push(`- ${marker}${text.slice(0, perLine)}`);
+      const data = await call('/v1/recall', {
+        messages: usable,
+        k: recallK,
+        scene,
+        ...(live ? { live: { k: live.k, minutes: live.minutes, scenes: live.scenes } } : {}),
+      });
+
+      const lines = [];
+
+      // Current situation first: without it the pet answers as if the main
+      // session had never happened, which is the whole point of this block.
+      const liveNow = Array.isArray(data?.live) ? data.live : [];
+      if (live && liveNow.length > 0) {
+        const perLine = Math.max(80, Math.floor(live.maxChars / liveNow.length));
+        lines.push(`【对方那边刚刚在聊的】（近 ${live.minutes} 分钟，是现状，不是回忆）`);
+        for (const row of liveNow) {
+          const text = String(row?.render?.text ?? '').trim();
+          if (!text) continue;
+          lines.push(`- ${formatClock(row?.updated_at)}${text.slice(0, perLine)}`);
+        }
       }
-      return lines.length > 1 ? lines.join('\n') : '';
+
+      const results = Array.isArray(data?.results) ? data.results : [];
+      if (results.length > 0) {
+        if (lines.length > 0) lines.push('');
+        lines.push('【长期记忆】（只是背景，不要原样复述）');
+        const perLine = Math.max(120, Math.floor(maxChars / results.length));
+        for (const result of results) {
+          const text = String(result?.render?.text ?? result?.title ?? '').trim();
+          if (!text) continue;
+          const marker = result?.disclosure === 'owner_initiated' ? '（对方自己提起过的）' : '';
+          lines.push(`- ${marker}${text.slice(0, perLine)}`);
+        }
+      }
+
+      return lines.length > 0 ? lines.join('\n') : '';
     } catch (error) {
       logger?.debug?.(`记忆召回失败：${error?.message ?? error}`);
       return '';

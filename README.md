@@ -184,9 +184,9 @@ curl http://127.0.0.1:8790/health
 - 定时刷新（默认 10 分钟）与会话重置后重新注入；也可 `POST /admin/memory/refresh`。
 - 需要细节时，`pet-chat` 的只读工具会去读 `memories/index.md` 指向的原文件。
 
-> 这张卡是**长期记忆**，不是这条主会话的实时上下文。主会话里刚发生的事，要等写进
-> `memories/`（journal / live-context）之后桌宠才知道。想让它知道“现在”，可以让助手在
-> 关键节点往 `memories/00-inbox/live-context.md` 追加一行。
+> 这张卡是**长期记忆**。主会话里刚发生的事不走这张卡，走每轮召回时并取的「live」块
+> （见下节「记忆服务」）：最近的短期 chat 直接拼进 prompt，不必等写进 `memories/`。
+> 记忆卡每 10 分钟刷新一次；live 块每轮都是新的。
 
 ## dsh-pet 气泡优先级自愈
 
@@ -218,10 +218,16 @@ dsh-pet 的气泡位只有一个，回合结束时「工作状态」气泡（“
   "scene": "pet",
   "recallK": 3,
   "recallMaxChars": 800,
+  "live": { "k": 6, "minutes": 30, "scenes": ["main"], "maxChars": 400 },
   "timeoutMs": 800,
   "ingest": true
 }
 ```
+
+- `live` = 「对方那边刚刚在聊的」：每轮带 `live` 参数调 `/v1/recall`，把指定场景最近
+  `minutes` 分钟的短期 chat 拼在长期记忆**之前**（是现状，不是回忆）。`"live": false` 关闭。
+  可见性仍由 memd 的 SQL 决定：pet 令牌看得到 owner 的 `main` chat，看不到 sensitive、
+  看不到群和别人的私聊。主会话消息由 `dsh-memory` 插件上报，所以这条链路是自动的。
 
 - memd 不在线时静默降级：没有记忆块，但桌宠照常回复。
 - 验证：`node test/run-all.mjs`（含「召回块进 prompt、用户与回复都入库」用例）。
@@ -266,8 +272,9 @@ DSH 桌面版每次重启换随机端口：`dsh.baseUrl` 留空时本服务会�
    桌宠气泡本来也是整段出现，够用。
 4. **表情包选图**：桌宠的 `chatImageEnabled` 暂关；要保留需把 meme 清单交给 DSH 会话，
    或由本服务在回复后补 `[图:名称]`。
-5. **实时上下文**：只接长期记忆；要接“这条主会话最近说了什么”，需要额外读 session 日志/
-   写 live-context（+1–2 天）。
+5. **实时上下文**：已接（2026-10-24）。每轮 `/v1/recall` 带 `live:{k,minutes,scenes}`，
+   把指定的其它场景（默认 `main`）最近 N 分钟的短期 chat 拼在长期记忆之前；只覆盖**用户
+   这边的消息**（`dsh-memory` 插件只上报 user 消息），助手的回复仍要写进 `memories/` 才进得去。
 6. **严格 identity**：未改 `dsh-pet` 源码时，shim 失败会触发它的“回落当前模型”重试。
    现在由本服务的降级文案挡住（`src/degraded.mjs`，失败时返回 200 + 一句说明，它就不会去试
    第二个候选）；`patches/dsh-pet-external-llm.md` 是当时评估的另一种做法，**已作废**，
