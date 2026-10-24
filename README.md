@@ -30,12 +30,34 @@
 
 ## 前置
 
-- Windows，DSH 桌面版 0.2.1-rc.2（本机已验证）。
+- Windows，DSH 桌面版 **0.2.1-rc.2**（见下节；其它版本未验证）。
 - Node.js ≥ 22.12。本机 PATH 没有 node 时，用 DSH 自带的：
   `D:\Software\dsh\resources\runtime\primary-runtime\dependencies\node\bin\node.exe`
 - `qq-agent-presets` 插件（`pet-chat` preset 复用它提供的只读工具守卫）。
 - 本服务依赖 `..\qq-bridge\src\dsh-client.js`（Cookie 铸造、端口发现、session RPC），
   所以 `qq-bridge` 目录要保留在同级。
+
+## DSH 版本支持
+
+**目前仅支持 DSH 桌面版 `0.2.1-rc.2`。** 其它版本未做验证，升级后请先自检：
+
+```powershell
+node src\index.mjs --check
+```
+
+为什么绑得这么紧——本服务吃的是 DSH 的**未公开 RPC 形态**，不是稳定协议：
+
+| 依赖点 | 在 0.2.1-rc.2 的形态 |
+|---|---|
+| `session/prompt` | 必须带 `requestId`；`mode: 'queue'` |
+| `session/selectModel` | 选完模型后 `reasoningEffort` 由 DSH 决定 |
+| `session/projections` | 队列/权限/token 用量都从这里读 |
+| `agentPresets.list` | preset 存在才能建会话（`pet-chat`） |
+| `commands.execute` | `/permission read-only` 走这条 |
+| `turn/end` 的 reason | `{kind: completed\|aborted|error\|blocked}`；**`blocked` 没有 message** |
+
+升级 DSH 后如果桌宠开始报错或只回降级文案，先看 `logs/pet-llm.log` 里的 `reason`：
+`blocked` 见 `memories/50-knowledge/2026-10-24-pet-blocked-session.md`，`error` 才是网络/进程问题。
 
 ## 安装（三步）
 
