@@ -25,7 +25,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.endsWith('/chat')) return json({ ok: true, text: '我在。' });
   if (url.pathname.endsWith('/position')) return json({ ok: true, x: 0.5, y: 0.5 });
   if (url.pathname.endsWith('/throw')) return json({ ok: true });
-  if (url.pathname.endsWith('/models')) return json({ providers: [{ id: 'pet-brain', models: [{ id: 'xi' }] }] });
+  if (url.pathname.endsWith('/models')) return json({ providers: [{ id: 'pet-llm', models: [{ id: 'xi' }] }] });
   res.writeHead(404);
   res.end('not found');
 });

@@ -1,17 +1,18 @@
 # dsh-pet-configurable-llm —— 桌宠的「LLM」接入层
 
 > 项目名：`dsh-pet-configurable-llm`（可配置的 dsh-pet LLM 接入层）。  
-> DSH 里的 provider ID 仍是 `pet-brain`（兼容现有 `chatModel: pet-brain/xi`），改名只涉及仓库与目录，不动运行中的模型 ID。  
-> 代码标识符统一用 LLM/agent 的说法（`DshAgent`、`createPetLlmServer`、`PET_LLM_*`），
-> 只有两处保留旧名：provider ID `pet-brain`（对外契约）和旧补丁标记 `petBrainReplyPriority` /
-> `.bak-petbrain`（兼容已打过补丁的文件，见 `src/patch-dsh-pet.mjs`）。
+> DSH 里的 provider ID 是 `pet-llm`（2026-10-25 从 `pet-brain` 改名；旧 ID 不再使用，
+> 升级时要把 profile 的 `llm-pi-ai` 和 dsh-pet 的 `chatModel` / `whisperModel` 一起改）。  
+> 代码标识符统一用 LLM/agent 的说法（`DshAgent`、`createPetLlmServer`、`PET_LLM_*`）；
+> 只有旧补丁标记 `petBrainReplyPriority` / `.bak-petbrain` 保留旧拼写，因为要认出已经
+> 打过补丁的文件（见 `src/patch-dsh-pet.mjs`）。
 
 把 `dsh-pet` 的对话/碎碎念接到**同一个工作区里的专用 DSH 会话**，让桌宠复用工作区的
 `AGENTS.md` 人格、`memories/` 长期记忆和同一个模型账户；它自己的
 `memory.json` 不再参与生成。
 
 ```
-桌宠 UI ──POST /chat──▶ dsh-pet host ──ctx.llm──▶ DSH 自定义 provider「pet-brain」
+桌宠 UI ──POST /chat──▶ dsh-pet host ──ctx.llm──▶ DSH 自定义 provider「pet-llm」
                                                    │
                                             本服务（OpenAI 兼容 /v1）
                                                    │
@@ -95,7 +96,7 @@ DSH 设置 → 模型 → 添加自定义提供方（或直接写 `settings.yaml
 
 | 字段 | 值 |
 |---|---|
-| Provider ID | `pet-brain` |
+| Provider ID | `pet-llm` |
 | 显示名称 | 桌宠 |
 | 基础 URL | `http://127.0.0.1:8790/v1` |
 | API 协议 | `openai-completions` |
@@ -108,7 +109,7 @@ DSH 设置 → 模型 → 添加自定义提供方（或直接写 `settings.yaml
 ```yaml
 llm-pi-ai:
   providers:
-    pet-brain:
+    pet-llm:
       displayName: 桌宠
       api: openai-completions
       baseURL: http://127.0.0.1:8790/v1
@@ -122,7 +123,7 @@ llm-pi-ai:
           name: 桌宠
 ```
 
-> 不要把 `pet-brain` 设成 DSH 的**默认模型**：那会让本服务里的 DSH 会话再调回本服务，
+> 不要把 `pet-llm` 设成 DSH 的**默认模型**：那会让本服务里的 DSH 会话再调回本服务，
 > 形成自我递归。它只给桌宠的 `chatModel` 用。
 >
 > 建议把该路由的重试调低（`retryPolicy.maxRetries: 0` 或 `1`）：DSH 超时后自动重试会
@@ -134,8 +135,8 @@ llm-pi-ai:
 
 ```jsonc
 {
-  "chatModel": { "provider": "pet-brain", "model": "xi" },
-  "whisperModel": { "provider": "pet-brain", "model": "xi" },
+  "chatModel": { "provider": "pet-llm", "model": "xi" },
+  "whisperModel": { "provider": "pet-llm", "model": "xi" },
   "chatMemoryRounds": 0,
   "pets": [
     {
@@ -150,7 +151,7 @@ llm-pi-ai:
 - `chatMemoryRounds: 0`：桌宠的 `memory.json` 不再进上下文。
 - `whisperEnabled: false`：关掉每 300 秒自动碎碎念（否则每 5 分钟烧一个 agent turn）。
   手动右键「碎碎念」/`/chat` 空参数仍可用，走同一个 LLM 会话。
-- 如果设置页的下拉框暂时看不到 `pet-brain/xi`，直接改 `main-config.jsonc` 也能生效
+- 如果设置页的下拉框暂时看不到 `pet-llm/xi`，直接改 `main-config.jsonc` 也能生效
   （配置校验只要求 provider/model 都非空）。
 
 ## 启动与验证

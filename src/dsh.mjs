@@ -325,8 +325,12 @@ export class DshAgent {
 
       const model = this.config.dsh.model;
       if (model?.provider && model?.model) {
-        if (String(model.provider).includes('pet-brain')) {
-          throw new Error('dsh.model.provider 指向 pet-brain 会造成自我递归；请改成 DeepSeek 的 provider');
+        // 两个 id 都拦：`pet-llm` 是现在的 provider，`pet-brain` 是改名前的老配置，
+        // 残留一份都会造成本服务里的 DSH 会话调回本服务。
+        if (/^(pet-llm|pet-brain)$/.test(String(model.provider))) {
+          throw new Error(
+            `dsh.model.provider 指向 ${model.provider} 会造成自我递归；请改成 DeepSeek 的 provider`,
+          );
         }
         try {
           const selected = unwrap(
