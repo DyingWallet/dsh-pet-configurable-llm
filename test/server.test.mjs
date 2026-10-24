@@ -58,7 +58,7 @@ function makeServer(configPatch = {}) {
     memory: { cardFile: 'D:/deepseek_workspace/memories/.meta/card.md', injectCard: true },
     models: { xi: 'main' },
     defaultModel: 'xi',
-    degradedReply: { enabled: true, text: '（降级：脑子连不上）' },
+    degradedReply: { enabled: true, text: '（降级：模型连不上）' },
     ...configPatch,
   };
   const server = createPetBrainServer({
@@ -178,7 +178,7 @@ test('未知模型返回 404；生成失败默认降级成 200 + 说明文案', 
     });
     assert.equal(failed.status, 200);
     const text = await failed.text();
-    assert.match(text, /（降级：脑子连不上）/);
+    assert.match(text, /（降级：模型连不上）/);
     assert.match(text, /"finish_reason":"stop"/);
     assert.match(text, /data: \[DONE\]/);
     assert.doesNotMatch(text, /"error"/);
@@ -191,14 +191,14 @@ test('未知模型返回 404；生成失败默认降级成 200 + 说明文案', 
     });
     assert.equal(plain.status, 200);
     const plainBody = await plain.json();
-    assert.equal(plainBody.choices[0].message.content, '（降级：脑子连不上）');
-    assert.equal(plainBody.pet_brain.degraded, true);
-    assert.equal(plainBody.pet_brain.reason, 'timeout');
+    assert.equal(plainBody.choices[0].message.content, '（降级：模型连不上）');
+    assert.equal(plainBody.pet_llm.degraded, true);
+    assert.equal(plainBody.pet_llm.reason, 'timeout');
 
     // 降级文案不写进长期记忆（否则会被当成桌宠真说过的话）
     await new Promise((resolve) => setTimeout(resolve, 10));
     const texts = memoryService.ingested.map((entry) => entry.messages[0]?.content ?? '');
-    assert.ok(!texts.some((t) => String(t).includes('（降级：脑子连不上）')), 'degraded reply must not be ingested');
+    assert.ok(!texts.some((t) => String(t).includes('（降级：模型连不上）')), 'degraded reply must not be ingested');
   } finally {
     await stop(server);
   }

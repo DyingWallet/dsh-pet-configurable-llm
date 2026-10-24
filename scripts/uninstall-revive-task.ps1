@@ -2,7 +2,7 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\uninstall-revive-task.ps1
 #
-# Only the scheduled task is removed; a running pet-brain keeps running.
+# Only the scheduled task is removed; a running LLM service keeps running.
 $installScript = Join-Path $PSScriptRoot 'install-revive-task.ps1'
 if (-not (Test-Path -LiteralPath $installScript)) { throw "missing $installScript" }
 & $installScript -Remove

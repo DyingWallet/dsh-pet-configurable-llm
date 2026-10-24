@@ -19,7 +19,7 @@ loaded.config.dsh.agentPreset = process.env.PET_BRAIN_TEST_PRESET || 'qq-agent-r
 loaded.config.dsh.timeoutMs = 90_000;
 loaded.config.log.level = 'debug';
 const logger = createLogger(loaded.config.log);
-const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-brain-integration-'));
+const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-llm-integration-'));
 
 const card = buildMemoryCard({
   root: loaded.config.memory.root,

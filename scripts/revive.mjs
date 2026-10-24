@@ -1,6 +1,6 @@
-// scripts/revive.mjs —— 1 分钟看护：DSH 在、pet-brain 不在，就把它拉起来。
+// scripts/revive.mjs —— 1 分钟看护：DSH 在、模型服务不在，就把它拉起来。
 //
-// 为什么需要：pet-brain 的长命由 DSH 决定（src/guard.mjs 在 DSH 连续 3x20 秒不可达时自退），
+// 为什么需要：本服务的长命由 DSH 决定（src/guard.mjs 在 DSH 连续 3x20 秒不可达时自退），
 // 所以 DSH 重启超过 ~60 秒时 pet 会被判定为孤儿并退出；DSH 回来之后没有任何东西会再拉起它，
 // 8790 就空着——而 DSH 的 pet-chat 请求连不上 8790 时，dsh-pet 会回落到普通对话模型
 // （degraded.mjs 里挡不住这一种，因为请求根本没到我们这层）。

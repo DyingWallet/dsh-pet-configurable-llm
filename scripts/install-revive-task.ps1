@@ -1,11 +1,11 @@
-# Register the pet-revive watchdog: every minute, start pet-brain if DSH is up
-# and 8790 is not listening.
+# Register the pet-revive watchdog: every minute, start the pet LLM service when
+# DSH is up and 8790 is not listening.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\install-revive-task.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\install-revive-task.ps1 -Check
 #   powershell -ExecutionPolicy Bypass -File scripts\install-revive-task.ps1 -Remove
 #
-# Why it is needed: pet-brain exits by itself when DSH has been unreachable for
+# Why it is needed: the service exits by itself when DSH has been unreachable for
 # 3 x 20s (src/guard.mjs). After a DSH restart the port stays empty and nothing
 # else would start it again - start-stack.ps1 only runs at logon. While 8790 is
 # silent, DSH's pet-chat requests fail before reaching our degraded reply and

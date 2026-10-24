@@ -221,6 +221,9 @@ dsh-pet 的气泡位只有一个，回合结束时「工作状态」气泡（“
 | 重置某只宠物的 LLM 会话 | `POST /admin/sessions/reset` `{ "petId":"main" }`（需令牌） |
 | 刷新记忆卡 | `POST /admin/memory/refresh`（需令牌） |
 | 自检 | `node src/index.mjs --check` |
+| 看护（1 分钟） | `scripts\install-revive-task.ps1` 注册任务 `pet-revive`；`-Check` 看状态，`uninstall-revive-task.ps1` 删除。它在「DSH 在、8790 不在」时拉起本服务，日志 `logs/revive.log` |
+| 进程自退 | DSH 连续 3 x 20 秒不可达即退出（`src/guard.mjs`），`PET_BRAIN_ORPHAN_GUARD=0` 可关 |
+| 失败降级 | 内部失败时返回 200 + 一句说明（`src/degraded.mjs`），避免 dsh-pet 回落到普通对话模型；`PET_BRAIN_DEGRADED_REPLY=0` 可退回 502 |
 
 DSH 桌面版每次重启换随机端口：`dsh.baseUrl` 留空时本服务会自动发现；固定端口失效时会
 再扫一次。`DSH_WEB_URL` 环境变量优先。
@@ -238,9 +241,10 @@ DSH 桌面版每次重启换随机端口：`dsh.baseUrl` 留空时本服务会�
    或由本服务在回复后补 `[图:名称]`。
 5. **实时上下文**：只接长期记忆；要接“这条主会话最近说了什么”，需要额外读 session 日志/
    写 live-context（+1–2 天）。
-6. **严格 identity**：未改 `dsh-pet` 源码时，shim 失败会触发它的“回落当前模型”重试，可能
-   变成普通模型回答。要 100% 保证，应用 `patches/dsh-pet-external-brain.md` 里的小补丁
-   （关闭 memory、禁止回落）。
+6. **严格 identity**：未改 `dsh-pet` 源码时，shim 失败会触发它的“回落当前模型”重试。
+   现在由本服务的降级文案挡住（`src/degraded.mjs`，失败时返回 200 + 一句说明，它就不会去试
+   第二个候选）；`patches/dsh-pet-external-llm.md` 是当时评估的另一种做法，**已作废**，
+   仅留作记录。
 
 ## 目录
 

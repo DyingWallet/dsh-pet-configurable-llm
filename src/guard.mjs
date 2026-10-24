@@ -1,6 +1,6 @@
-// 孤儿保护：pet-brain（8790）只服务 DSH 的 pet-chat preset，DSH 不在就没有调用方。
+// 孤儿保护：模型服务（8790）只服务 DSH 的 pet-chat preset，DSH 不在就没有调用方。
 //
-// v2 自启方案 B（2026-10-24 决定）：pet-brain 由 qq-bridge\start-stack.ps1 在 DSH
+// v2 自启方案 B（2026-10-24 决定）：本服务由 qq-bridge\start-stack.ps1 在 DSH
 // 之后拉起，不做独立登录任务；DSH 关闭/崩溃后由这里每 20 秒探一次，连续 3 次
 // 不可达（约 60 秒）就自己退出，避免留下占着 8790 的僵尸后端。
 //
@@ -8,9 +8,8 @@
 // 整个 app（dsh-memory/lib/index.js 的注释记录了 2026-10-24 那次事故），为了顺带
 // 启动一个后端而把进程管理塞进 DSH 进程内，风险不对称。
 //
-// 探活只做到「端点可达」这一层（DshBrain#probe），不打 RPC：DSH 桌面版每次重启换
-// 随机端口，探测会用自动发现把它认出来；认不出来才算一次 miss，所以 DSH 正常重启
-// 不会误杀 pet-brain。
+// 探活只做到「端点可达」这一层（本服务的 `probe()`），不打 RPC：DSH 桌面版每次重启换随机端口，
+// 探测会用自动发现把它认出来；认不出来才算一次 miss，所以 DSH 正常重启不会误杀本服务。
 
 export const GUARD_DEFAULTS = Object.freeze({ probeMs: 20_000, maxMisses: 3 });
 
@@ -69,7 +68,7 @@ export function createDshGuard({ probe, logger, probeMs, maxMisses, onOrphan } =
 
     stopped = true;
     clearTimer();
-    logger?.warn?.(`DSH 连续 ${limit} 次不可达（约 ${Math.round((intervalMs * limit) / 1000)} 秒），pet-brain 视为孤儿，退出`);
+    logger?.warn?.(`DSH 连续 ${limit} 次不可达（约 ${Math.round((intervalMs * limit) / 1000)} 秒），模型服务视为孤儿，退出`);
     try {
       await onOrphan?.(misses);
     } catch (error) {

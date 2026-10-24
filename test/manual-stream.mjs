@@ -1,4 +1,4 @@
-// 手动探针：验证 SSE 流（需要 pet-brain 已在 127.0.0.1:8790 运行）。
+// 手动探针：验证 SSE 流（需要模型服务已在 127.0.0.1:8790 运行）。
 // 用法：node test/manual-stream.mjs "说一句话"
 import fs from 'node:fs';
 import path from 'node:path';

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "OpenAI-compatible brain bridge: dsh-pet -> DSH session with the same workspace and memories.",
+  "description": "OpenAI-compatible LLM bridge: dsh-pet -> DSH session with the same workspace and memories.",
   "engines": {
     "node": ">=22.12.0"
   },

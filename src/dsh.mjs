@@ -113,7 +113,7 @@ export class DshBrain {
   }
 
   async ensureClient({ force = false } = {}) {
-    if (this.closed) throw new Error('pet-brain 已关闭');
+    if (this.closed) throw new Error('模型服务已关闭');
     // DSH_WEB_URL 是 DSH 自己注入给子进程的当前地址（桌面版每次重启换端口）；
     // 服务由登录项/手动启动时没有这个变量，就回落到配置或自动发现。
     const configured =

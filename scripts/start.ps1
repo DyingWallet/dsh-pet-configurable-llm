@@ -1,4 +1,4 @@
-﻿# 启动 pet-brain（自动找 Node：环境变量 NODE_EXE -> DSH 自带 Node -> PATH）
+# 启动模型服务（自动找 Node：环境变量 NODE_EXE -> DSH 自带 Node -> PATH）
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\start.ps1 -Check

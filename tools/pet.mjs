@@ -55,7 +55,7 @@ function usage() {
   idle                          清空外部工作状态
   lock [--ttl 60000]            取锁并打印 lockId
   unlock [--lock-id ID]         释放锁
-  chat <文本>                   走桌宠自己的 /chat（会经过它配置的模型/大脑）
+  chat <文本>                   走桌宠自己的 /chat（会经过它配置的模型）
   position <x> <y>              挪位置（归一化 0–1，自动取/放锁）
   throw <angle> <power>         抛掷（角度/力度，自动取/放锁）
   models                        读桌宠可用模型

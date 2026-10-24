@@ -1,4 +1,4 @@
-// pet-brain 入口：
+// 模型服务入口：
 //   node src/index.mjs           启动 OpenAI 兼容服务
 //   node src/index.mjs --check   只体检（配置/记忆卡/DSH/preset），不起服务
 import { loadConfig } from './config.mjs';
@@ -97,11 +97,11 @@ await new Promise((resolve, reject) => {
   server.once('error', reject);
   server.listen(loaded.config.listen.port, loaded.config.listen.host, resolve);
 });
-logger.info(`pet-brain 已监听 http://${loaded.config.listen.host}:${loaded.config.listen.port}/v1`);
+logger.info(`模型服务已监听 http://${loaded.config.listen.host}:${loaded.config.listen.port}/v1`);
 logger.info(`令牌文件：${loaded.tokenFile}`);
 logger.info(`DSH preset：${loaded.config.dsh.agentPreset}；工作区：${loaded.config.dsh.workspacePath}`);
 
-// 孤儿保护：pet-brain 由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
+// 孤儿保护：本服务由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
 // DSH 关闭/崩溃后连续 3 次探活失败（默认 20 秒一次，约 60 秒）就退出，
 // 免得留下占着 8790 的僵尸后端。PET_BRAIN_ORPHAN_GUARD=0 可关掉（本地调试用）。
 const orphanGuard = createDshGuard({

@@ -30,7 +30,7 @@ const DEFAULTS = {
     timeoutMs: 800,
     ingest: true,
   },
-  // 孤儿保护：pet-brain 跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 20 秒 = 60 秒。
+  // 孤儿保护：本服务跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 20 秒 = 60 秒。
   lifecycle: { orphanGuard: true, probeMs: 20_000, maxMisses: 3 },
   // 失败时的降级文案（见 degraded.mjs）：返回 200 + 这句话，dsh-pet 就不会回落到普通模型。
   degradedReply: { enabled: true, text: '' },
@@ -86,7 +86,7 @@ function normalizeConfig(raw, logger) {
   cfg.identity.name = String(cfg.identity.name || DEFAULTS.identity.name).trim() || DEFAULTS.identity.name;
   if (!isObject(cfg.listen) || typeof cfg.listen.port !== 'number') throw new Error('listen.port 必须是数字');
   if (cfg.listen.host !== '127.0.0.1' && cfg.listen.host !== 'localhost') {
-    logger?.warn?.('listen.host 不是回环地址；pet-brain 没有公网防护，建议改回 127.0.0.1');
+    logger?.warn?.('listen.host 不是回环地址；模型服务没有公网防护，建议改回 127.0.0.1');
   }
   if (!Number.isInteger(cfg.listen.port) || cfg.listen.port < 1 || cfg.listen.port > 65535) {
     throw new Error('listen.port 必须是 1–65535 的整数');

@@ -258,14 +258,14 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
                 model,
                 choices: [{ index: 0, message: { role: 'assistant', content: fallback }, finish_reason: 'stop' }],
                 usage: { prompt_tokens: 0, completion_tokens: fallback.length, total_tokens: fallback.length },
-                pet_brain: { degraded: true, reason: result.reason ?? 'brain_error' },
+                pet_llm: { degraded: true, reason: result.reason ?? 'llm_error' },
               };
               sendJson(res, 200, body);
               return;
             }
             openaiError(res, 502, result.message ?? `DSH 生成失败（${result.reason}）`, {
               type: 'server_error',
-              code: result.reason ?? 'brain_error',
+              code: result.reason ?? 'llm_error',
             });
             logger.warn(`chat 失败 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
             return;
@@ -325,7 +325,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
             error: {
               message: result.message ?? `DSH 生成失败（${result.reason}）`,
               type: 'server_error',
-              code: result.reason ?? 'brain_error',
+              code: result.reason ?? 'llm_error',
             },
           });
           res.write('data: [DONE]\n\n');
@@ -378,7 +378,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
       openaiError(res, 404, `未知路径：${url.pathname}`, { code: 'not_found' });
     } catch (error) {
       logger.error(`请求处理失败 ${method} ${url.pathname}: ${error?.stack ?? error}`);
-      if (!res.headersSent) openaiError(res, 500, 'pet-brain 内部错误', { type: 'server_error' });
+      if (!res.headersSent) openaiError(res, 500, '模型服务内部错误', { type: 'server_error' });
       else if (!res.writableEnded) res.end();
     }
   });

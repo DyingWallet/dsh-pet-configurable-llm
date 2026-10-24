@@ -6,7 +6,7 @@ import path from 'node:path';
 import { loadConfig } from '../src/config.mjs';
 
 function tempDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'pet-brain-config-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'pet-llm-config-'));
 }
 
 test('默认配置可用，并生成/复用本地令牌', () => {

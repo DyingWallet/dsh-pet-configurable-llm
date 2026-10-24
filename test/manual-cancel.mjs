@@ -1,4 +1,4 @@
-// 手动探针：验证客户端断开 -> brain 取消 -> 后续请求仍可用。
+// 手动探针：验证客户端断开 -> 模型调用取消 -> 后续请求仍可用。
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

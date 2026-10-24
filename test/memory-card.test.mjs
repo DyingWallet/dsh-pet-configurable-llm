@@ -6,7 +6,7 @@ import path from 'node:path';
 import { buildMemoryCard } from '../src/memory-card.mjs';
 
 function tempRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'pet-brain-memory-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'pet-llm-memory-'));
 }
 
 test('buildMemoryCard 汇总 profile / 日志 / 决策，并写入卡文件', () => {
