@@ -102,7 +102,7 @@ logger.info(`令牌文件：${loaded.tokenFile}`);
 logger.info(`DSH preset：${loaded.config.dsh.agentPreset}；工作区：${loaded.config.dsh.workspacePath}`);
 
 // 孤儿保护：pet-brain 由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
-// DSH 关闭/崩溃后连续 3 次探活失败（默认 30 秒一次，约 90 秒）就退出，
+// DSH 关闭/崩溃后连续 3 次探活失败（默认 20 秒一次，约 60 秒）就退出，
 // 免得留下占着 8790 的僵尸后端。PET_BRAIN_ORPHAN_GUARD=0 可关掉（本地调试用）。
 const orphanGuard = createDshGuard({
   probe: () => brain.probe(),

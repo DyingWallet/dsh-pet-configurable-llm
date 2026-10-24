@@ -1,8 +1,8 @@
 // 孤儿保护：pet-brain（8790）只服务 DSH 的 pet-chat preset，DSH 不在就没有调用方。
 //
 // v2 自启方案 B（2026-10-24 决定）：pet-brain 由 qq-bridge\start-stack.ps1 在 DSH
-// 之后拉起，不做独立登录任务；DSH 关闭/崩溃后由这里每 30 秒探一次，连续 3 次
-// 不可达（约 90 秒）就自己退出，避免留下占着 8790 的僵尸后端。
+// 之后拉起，不做独立登录任务；DSH 关闭/崩溃后由这里每 20 秒探一次，连续 3 次
+// 不可达（约 60 秒）就自己退出，避免留下占着 8790 的僵尸后端。
 //
 // 为什么不挂 DSH 进程：DSH 的 fail-loud 会把宿主插件的未捕获异常当成致命错误退出
 // 整个 app（dsh-memory/lib/index.js 的注释记录了 2026-10-24 那次事故），为了顺带
@@ -12,13 +12,13 @@
 // 随机端口，探测会用自动发现把它认出来；认不出来才算一次 miss，所以 DSH 正常重启
 // 不会误杀 pet-brain。
 
-export const GUARD_DEFAULTS = Object.freeze({ probeMs: 30_000, maxMisses: 3 });
+export const GUARD_DEFAULTS = Object.freeze({ probeMs: 20_000, maxMisses: 3 });
 
 /**
  * @param {object} options
  * @param {() => Promise<boolean>} options.probe 一次存活探测，true 表示 DSH 可达
  * @param {{info?:Function,warn?:Function,error?:Function}} [options.logger]
- * @param {number} [options.probeMs] 探测间隔，默认 30 秒（下限 5 秒）
+ * @param {number} [options.probeMs] 探测间隔，默认 20 秒（下限 5 秒）
  * @param {number} [options.maxMisses] 连续多少次不可达退出，默认 3
  * @param {(misses:number) => any} [options.onOrphan] 判定为孤儿后的处理（默认只记日志）
  */

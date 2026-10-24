@@ -30,8 +30,8 @@ const DEFAULTS = {
     timeoutMs: 800,
     ingest: true,
   },
-  // 孤儿保护：pet-brain 跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 30 秒 = 90 秒。
-  lifecycle: { orphanGuard: true, probeMs: 30_000, maxMisses: 3 },
+  // 孤儿保护：pet-brain 跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 20 秒 = 60 秒。
+  lifecycle: { orphanGuard: true, probeMs: 20_000, maxMisses: 3 },
   models: { xi: 'main' },
   defaultModel: 'xi',
   log: { level: 'info', file: '' },

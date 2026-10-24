@@ -14,7 +14,7 @@ test('连续不可达到达上限后判为孤儿，只回调一次', async () =>
   const guard = createDshGuard({
     probe: async () => false,
     logger,
-    probeMs: 30_000,
+    probeMs: 20_000,
     maxMisses: 3,
     onOrphan: () => {
       calls += 1;
@@ -42,7 +42,7 @@ test('中途恢复会把计数清零，不会误判', async () => {
   const guard = createDshGuard({
     probe: async () => answers.shift() ?? true,
     logger,
-    probeMs: 30_000,
+    probeMs: 20_000,
     maxMisses: 3,
     onOrphan: () => {
       calls += 1;
@@ -69,7 +69,7 @@ test('probe 抛异常按不可达计，不向上抛', async () => {
       throw new Error('boom');
     },
     logger,
-    probeMs: 30_000,
+    probeMs: 20_000,
     maxMisses: 2,
   });
 
@@ -88,7 +88,7 @@ test('stop() 之后不再探测也不再退出', async () => {
       return false;
     },
     logger: fakeLogger(),
-    probeMs: 30_000,
+    probeMs: 20_000,
     maxMisses: 1,
     onOrphan: () => {
       calls += 1;
@@ -101,11 +101,12 @@ test('stop() 之后不再探测也不再退出', async () => {
   assert.equal(calls, 0);
 });
 
-test('间隔下限 5 秒，默认 30 秒 x 3 次', () => {
+test('间隔下限 5 秒，默认 20 秒 x 3 次（约 60 秒）', () => {
   const guard = createDshGuard({ probe: async () => true, logger: fakeLogger(), probeMs: 10 });
   assert.equal(guard.intervalMs, 5_000);
   assert.equal(guard.limit, GUARD_DEFAULTS.maxMisses);
-  assert.equal(GUARD_DEFAULTS.probeMs, 30_000);
+  assert.equal(GUARD_DEFAULTS.probeMs, 20_000);
+  assert.equal(GUARD_DEFAULTS.probeMs * GUARD_DEFAULTS.maxMisses, 60_000);
   guard.stop();
 });
 
