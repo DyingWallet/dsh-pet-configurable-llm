@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPetBrainServer } from '../src/server.mjs';
+import { createPetLlmServer } from '../src/server.mjs';
 
-function fakeBrain() {
+function fakeAgent() {
   const bootstrapped = new Set();
   const calls = [];
   return {
@@ -50,7 +50,7 @@ function fakeMemoryService() {
 const BAD_PORTS = new Set([0, 6000, 6665, 6666, 6667, 6668, 6669, 10080]);
 
 function makeServer(configPatch = {}) {
-  const brain = fakeBrain();
+  const agent = fakeAgent();
   const memory = fakeMemory();
   const memoryService = fakeMemoryService();
   const config = {
@@ -61,15 +61,15 @@ function makeServer(configPatch = {}) {
     degradedReply: { enabled: true, text: '（降级：模型连不上）' },
     ...configPatch,
   };
-  const server = createPetBrainServer({
+  const server = createPetLlmServer({
     config,
     logger: { info() {}, warn() {}, error() {}, debug() {} },
-    brain,
+    agent,
     memory,
     memoryService,
     token: 'test-token',
   });
-  return { server, brain, memory, memoryService, config };
+  return { server, agent, memory, memoryService, config };
 }
 
 async function startServer(configPatch = {}) {
@@ -113,7 +113,7 @@ test('health 不需要鉴权；models 需要', async () => {
 });
 
 test('非流式对话：第一轮注入记忆卡，第二轮不再注入', async () => {
-  const { server, brain, base } = await startServer();
+  const { server, agent, base } = await startServer();
   try {
     const request = () =>
       fetch(`${base}/v1/chat/completions`, {
@@ -126,12 +126,12 @@ test('非流式对话：第一轮注入记忆卡，第二轮不再注入', async
     assert.equal(first.status, 200);
     const firstBody = await first.json();
     assert.equal(firstBody.choices[0].message.content, '你好，我在。');
-    assert.match(brain.calls[0].text, /MEMORY-CARD-70903/);
-    assert.equal(brain.bootstrapped.has('main'), true);
+    assert.match(agent.calls[0].text, /MEMORY-CARD-70903/);
+    assert.equal(agent.bootstrapped.has('main'), true);
 
     const second = await request();
     assert.equal(second.status, 200);
-    assert.doesNotMatch(brain.calls[1].text, /MEMORY-CARD-70903/);
+    assert.doesNotMatch(agent.calls[1].text, /MEMORY-CARD-70903/);
   } finally {
     await stop(server);
   }
@@ -226,7 +226,7 @@ test('关掉降级时仍然返回 SSE error 帧（便于排查）', async () => 
 });
 
 test('记忆服务：召回块进 prompt，用户与回复都入库', async () => {
-  const { server, brain, memoryService, base } = await startServer();
+  const { server, agent, memoryService, base } = await startServer();
   try {
     const response = await fetch(`${base}/v1/chat/completions`, {
       method: 'POST',
@@ -234,9 +234,9 @@ test('记忆服务：召回块进 prompt，用户与回复都入库', async () =
       body: JSON.stringify({ model: 'xi', stream: false, messages: [{ role: 'user', content: '放点爵士' }] }),
     });
     assert.equal(response.status, 200);
-    assert.match(brain.calls[0].text, /RECALL-BLOCK-爵士乐/);
+    assert.match(agent.calls[0].text, /RECALL-BLOCK-爵士乐/);
     assert.ok(
-      brain.calls[0].text.indexOf('RECALL-BLOCK-爵士乐') < brain.calls[0].text.indexOf('MEMORY-CARD-70903'),
+      agent.calls[0].text.indexOf('RECALL-BLOCK-爵士乐') < agent.calls[0].text.indexOf('MEMORY-CARD-70903'),
       'recall block goes before the bootstrap card',
     );
 

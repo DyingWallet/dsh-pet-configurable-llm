@@ -23,7 +23,7 @@ export const DEGRADED_REPLY = Object.freeze({
  * @param {NodeJS.ProcessEnv} [env]
  */
 export function degradedText(config, env = process.env) {
-  if (env.PET_BRAIN_DEGRADED_REPLY === '0') return '';
+  if (env.PET_LLM_DEGRADED_REPLY === '0') return '';
   const settings = config?.degradedReply ?? {};
   if (settings.enabled === false) return '';
   const text = typeof settings.text === 'string' ? settings.text.trim() : '';

@@ -6,14 +6,14 @@ import { createLogger } from './logger.mjs';
 import { buildMemoryCard } from './memory-card.mjs';
 import { createMemoryService } from './memory.mjs';
 import { patchDshPetClient } from './patch-dsh-pet.mjs';
-import { DshBrain } from './dsh.mjs';
+import { DshAgent } from './dsh.mjs';
 import { createDshGuard } from './guard.mjs';
-import { createPetBrainServer } from './server.mjs';
+import { createPetLlmServer } from './server.mjs';
 
 const CHECK = process.argv.includes('--check');
 
 const loaded = loadConfig({ logger: console });
-if (process.env.PET_BRAIN_PRESET) loaded.config.dsh.agentPreset = process.env.PET_BRAIN_PRESET;
+if (process.env.PET_LLM_PRESET) loaded.config.dsh.agentPreset = process.env.PET_LLM_PRESET;
 const logger = createLogger(loaded.config.log);
 
 // dsh-pet 的气泡优先级：让回复压过工作状态（启动时自动、幂等，网页 + 桌面两套）。
@@ -55,9 +55,9 @@ logger.info(`记忆卡：${card.chars} 字，${card.files.length} 个来源 -> $
 logger.info(`模型：${Object.keys(loaded.config.models).join(', ')}（默认 ${loaded.config.defaultModel}）`);
 
 if (CHECK) {
-  const brain = new DshBrain({ config: loaded.config, logger, stateDir: loaded.stateDir });
-  const health = await brain.health().catch((error) => ({ reachable: false, error: error?.message ?? String(error) }));
-  await brain.close();
+  const agent = new DshAgent({ config: loaded.config, logger, stateDir: loaded.stateDir });
+  const health = await agent.health().catch((error) => ({ reachable: false, error: error?.message ?? String(error) }));
+  await agent.close();
   const presetReady = Array.isArray(health.presets) && health.presets.includes(loaded.config.dsh.agentPreset);
   console.log(
     JSON.stringify(
@@ -79,16 +79,16 @@ if (CHECK) {
   process.exit(health.reachable === true && presetReady ? 0 : 2);
 }
 
-const brain = new DshBrain({ config: loaded.config, logger, stateDir: loaded.stateDir });
-await brain.start();
+const agent = new DshAgent({ config: loaded.config, logger, stateDir: loaded.stateDir });
+await agent.start();
 
 const memoryService = createMemoryService(loaded.config, logger);
 logger.info(`记忆服务：${memoryService.endpoint}（scene=${memoryService.scene}，令牌 ${memoryService.tokenFile}）`);
 
-const server = createPetBrainServer({
+const server = createPetLlmServer({
   config: loaded.config,
   logger,
-  brain,
+  agent,
   memory,
   memoryService,
   token: loaded.token,
@@ -103,17 +103,17 @@ logger.info(`DSH preset：${loaded.config.dsh.agentPreset}；工作区：${loade
 
 // 孤儿保护：本服务由 start-stack.ps1 在 DSH 之后拉起，不做独立登录任务。
 // DSH 关闭/崩溃后连续 3 次探活失败（默认 20 秒一次，约 60 秒）就退出，
-// 免得留下占着 8790 的僵尸后端。PET_BRAIN_ORPHAN_GUARD=0 可关掉（本地调试用）。
+// 免得留下占着 8790 的僵尸后端。PET_LLM_ORPHAN_GUARD=0 可关掉（本地调试用）。
 const orphanGuard = createDshGuard({
-  probe: () => brain.probe(),
+  probe: () => agent.probe(),
   logger,
   probeMs: loaded.config.lifecycle.probeMs,
   maxMisses: loaded.config.lifecycle.maxMisses,
   onOrphan: () => shutdown('orphan'),
 });
-const guardEnabled = loaded.config.lifecycle.orphanGuard && process.env.PET_BRAIN_ORPHAN_GUARD !== '0';
+const guardEnabled = loaded.config.lifecycle.orphanGuard && process.env.PET_LLM_ORPHAN_GUARD !== '0';
 if (guardEnabled) orphanGuard.start();
-else logger.warn('孤儿保护已关闭（lifecycle.orphanGuard=false 或 PET_BRAIN_ORPHAN_GUARD=0）');
+else logger.warn('孤儿保护已关闭（lifecycle.orphanGuard=false 或 PET_LLM_ORPHAN_GUARD=0）');
 
 const refreshTimer = setInterval(() => {
   try {
@@ -132,7 +132,7 @@ async function shutdown(signal) {
   orphanGuard.stop();
   clearInterval(refreshTimer);
   await new Promise((resolve) => server.close(() => resolve()));
-  await brain.close();
+  await agent.close();
   logger.info('已关闭');
   process.exit(0);
 }

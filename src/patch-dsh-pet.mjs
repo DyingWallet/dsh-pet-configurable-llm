@@ -10,7 +10,8 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const MARKER = 'petBrainReplyPriority';
+const MARKER = 'petLlmReplyPriority';
+const LEGACY_MARKER = 'petBrainReplyPriority';
 
 const CLIENT_TARGETS = [
   {
@@ -28,9 +29,14 @@ const SPRITE_TARGET = {
   to: "whisperOn ? 'whisper' : workTerminal && workOn ? 'work' : balanceOn ? 'balance' : workOn ? 'work' : 'none'",
 };
 
+/** 已经打过补丁？旧标记（petBrainReplyPriority）也认，否则升级后会重复打。 */
+function alreadyPatched(source) {
+  return source.includes(MARKER) || source.includes(LEGACY_MARKER);
+}
+
 /** 网页 bundle：返回 { text, status }。 */
 export function applyReplyPriorityPatch(source) {
-  if (source.includes(MARKER)) return { text: source, status: 'already' };
+  if (alreadyPatched(source)) return { text: source, status: 'already' };
   let text = source;
   let changed = 0;
   for (const target of CLIENT_TARGETS) {
@@ -45,7 +51,7 @@ export function applyReplyPriorityPatch(source) {
 
 /** 桌面 helper（sprite.js）：返回 { text, status }。 */
 export function applySpritePriorityPatch(source) {
-  if (source.includes(MARKER)) return { text: source, status: 'already' };
+  if (alreadyPatched(source)) return { text: source, status: 'already' };
   if (!source.includes(SPRITE_TARGET.from)) return { text: source, status: 'unsupported' };
   const text =
     source.replace(SPRITE_TARGET.from, SPRITE_TARGET.to) +
@@ -61,8 +67,9 @@ function patchFile(file, apply, logger, label) {
     logger?.debug?.(`dsh-pet ${label} 补丁状态：${result.status}（${file}）`);
     return { status: result.status, file };
   }
-  const backup = `${file}.bak-petbrain`;
-  if (!existsSync(backup)) {
+  const backup = `${file}.bak-petllm`;
+  const legacyBackup = `${file}.bak-petbrain`;
+  if (!existsSync(backup) && !existsSync(legacyBackup)) {
     copyFileSync(file, backup);
     logger?.info?.(`已备份 dsh-pet ${label}：${backup}`);
   }

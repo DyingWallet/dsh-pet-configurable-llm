@@ -12,10 +12,10 @@ import path from 'node:path';
 import { loadConfig } from '../src/config.mjs';
 import { createLogger } from '../src/logger.mjs';
 import { buildMemoryCard } from '../src/memory-card.mjs';
-import { DshBrain } from '../src/dsh.mjs';
+import { DshAgent } from '../src/dsh.mjs';
 
 const loaded = loadConfig({ logger: console });
-loaded.config.dsh.agentPreset = process.env.PET_BRAIN_TEST_PRESET || 'qq-agent-readonly';
+loaded.config.dsh.agentPreset = process.env.PET_LLM_TEST_PRESET || 'qq-agent-readonly';
 loaded.config.dsh.timeoutMs = 90_000;
 loaded.config.log.level = 'debug';
 const logger = createLogger(loaded.config.log);
@@ -28,14 +28,14 @@ const card = buildMemoryCard({
 });
 logger.info(`记忆卡 ${card.chars} 字；preset=${loaded.config.dsh.agentPreset}`);
 
-const brain = new DshBrain({ config: loaded.config, logger, stateDir });
+const agent = new DshAgent({ config: loaded.config, logger, stateDir });
 let ok = false;
 try {
-  await brain.start();
+  await agent.start();
   const question =
     '先用 read 读 memories/50-knowledge/2026-10-22-qq-bridge-deployed.md，' +
     '再用一句话回答：QQ 桥接的启动链有哪几段？不要编，读不到就说读不到。';
-  const result = await brain.prompt('selftest', question);
+  const result = await agent.prompt('selftest', question);
   console.log('--- 回答 ---');
   console.log(result.text);
   console.log('--- 结果 ---', result.ok, result.reason);
@@ -43,7 +43,7 @@ try {
   if (!ok) console.error('集成测试失败：回答里没有启动链关键词');
 
   if (ok) {
-    const canary = await brain.prompt(
+    const canary = await agent.prompt(
       'selftest',
       '读 D:\\deepseek_workspace\\memories\\.meta\\identity-canary.md，只回答里面的暗号原文（四个字+数字），不要解释。',
     );
@@ -56,11 +56,11 @@ try {
   console.error('集成测试异常：', error?.stack ?? error);
 } finally {
   try {
-    await brain.resetSession('selftest');
+    await agent.resetSession('selftest');
   } catch (error) {
     console.error('归档测试会话失败：', error?.message ?? error);
   }
-  await brain.close();
+  await agent.close();
   fs.rmSync(stateDir, { recursive: true, force: true });
 }
 process.exit(ok ? 0 : 1);

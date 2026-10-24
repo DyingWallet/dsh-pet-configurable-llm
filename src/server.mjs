@@ -3,7 +3,7 @@
 // 只做三件事：
 //   1. 鉴权（Bearer token，仅回环地址）；
 //   2. 取最后一条 user 文本（忽略 tools / 历史 —— 桌宠自己的 memory 不参与）；
-//   3. 调 DshBrain（专用 DSH 会话），把回复按 SSE 吐回去。
+//   3. 调 DshAgent（专用 DSH 会话），把回复按 SSE 吐回去。
 //
 // 失败时默认不报错，改用一句降级文案当正常回复（见 degraded.mjs）：dsh-pet 在 provider
 // 报错时会回落到普通对话模型，那会让桌宠「换个人格」回答，比直接说「我暂时不行」更糟。
@@ -131,12 +131,12 @@ function completionChunk({ id, created, model, delta, finish = null }) {
  * @param {object} options
  * @param {object} options.config
  * @param {object} options.logger
- * @param {object} options.brain
+ * @param {object} options.agent
  * @param {{getCard: Function, refresh: Function}} options.memory
  * @param {{recallBlock: Function, ingest: Function}} [options.memoryService]
  * @param {string} options.token
  */
-export function createPetBrainServer({ config, logger, brain, memory, memoryService, token }) {
+export function createPetLlmServer({ config, logger, agent, memory, memoryService, token }) {
   const models = Object.keys(config.models);
 
   const server = createServer(async (req, res) => {
@@ -156,10 +156,10 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
 
     try {
       if (url.pathname === '/health' && method === 'GET') {
-        const dsh = await brain.health();
+        const dsh = await agent.health();
         sendJson(res, 200, {
           ok: dsh.reachable === true,
-          service: 'pet-brain',
+          service: 'pet-llm',
           dsh,
           memory: {
             cardFile: config.memory.cardFile,
@@ -185,7 +185,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
             id,
             object: 'model',
             created: 0,
-            owned_by: 'pet-brain',
+            owned_by: 'pet-llm',
           })),
         });
         return;
@@ -225,7 +225,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
         const stream = body.stream === true;
         const id = `chatcmpl-${randomUUID()}`;
         const created = Math.floor(Date.now() / 1000);
-        const bootstrap = config.memory.injectCard === true && !brain.isBootstrapped(petId);
+        const bootstrap = config.memory.injectCard === true && !agent.isBootstrapped(petId);
 
         // memd：先召回（失败只当没有记忆），再把本轮用户消息写进短期层。
         const recall = memoryService ? await memoryService.recallBlock(body.messages).catch(() => '') : '';
@@ -244,7 +244,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
         );
 
         if (!stream) {
-          const result = await brain.prompt(petId, promptText, { signal: abort.signal });
+          const result = await agent.prompt(petId, promptText, { signal: abort.signal });
           finished = true;
           if (!result.ok) {
             // 降级：用一句说明当正常回复，dsh-pet 就不会回落到普通对话模型。
@@ -270,7 +270,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
             logger.warn(`chat 失败 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
             return;
           }
-          if (bootstrap) brain.markBootstrapped(petId);
+          if (bootstrap) agent.markBootstrapped(petId);
           const text = result.text.trim();
           if (memoryService) void memoryService.ingest([{ role: 'assistant', content: text }], petId).catch(() => {});
           sendJson(res, 200, {
@@ -302,7 +302,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
           }
         }, SSE_PING_MS);
 
-        const result = await brain.prompt(petId, promptText, {
+        const result = await agent.prompt(petId, promptText, {
           signal: abort.signal,
           onDelta: (text) => {
             writeSse(res, completionChunk({ id, created, model, delta: { content: text } }));
@@ -333,7 +333,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
           logger.warn(`chat 失败 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
           return;
         }
-        if (bootstrap) brain.markBootstrapped(petId);
+        if (bootstrap) agent.markBootstrapped(petId);
         if (memoryService) void memoryService.ingest([{ role: 'assistant', content: result.text.trim() }], petId).catch(() => {});
         writeSse(res, completionChunk({ id, created, model, delta: {}, finish: 'stop' }));
         res.write('data: [DONE]\n\n');
@@ -351,8 +351,8 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
       if (url.pathname === '/admin/sessions' && method === 'GET') {
         sendJson(res, 200, {
           ok: true,
-          sessions: Object.fromEntries(brain.sessions),
-          meta: Object.fromEntries(brain.meta),
+          sessions: Object.fromEntries(agent.sessions),
+          meta: Object.fromEntries(agent.meta),
         });
         return;
       }
@@ -370,7 +370,7 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
           openaiError(res, 400, 'petId 必填');
           return;
         }
-        await brain.resetSession(petId);
+        await agent.resetSession(petId);
         sendJson(res, 200, { ok: true, petId });
         return;
       }

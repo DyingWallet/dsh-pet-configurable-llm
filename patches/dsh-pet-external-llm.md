@@ -26,7 +26,7 @@
 
 1. **失败不回落** → `src/degraded.mjs`：本服务内部失败时返回 HTTP 200 + 一句明确的降级文案，
    dsh-pet 收到的是「成功生成」，不会再去试第二个候选模型。
-   关掉办法：`degradedReply.enabled=false` 或 `PET_BRAIN_DEGRADED_REPLY=0`（退回原来的 502）。
+   关掉办法：`degradedReply.enabled=false` 或 `PET_LLM_DEGRADED_REPLY=0`（退回原来的 502）。
 2. **进程不在的那一半** → `scripts/revive.mjs` + `scripts/install-revive-task.ps1`（任务
    `pet-revive`，每 1 分钟）：DSH 在、8790 不在就把服务拉起来。之前 `start-stack.ps1` 只在登录时
    跑一次，DSH 重启后没人补。

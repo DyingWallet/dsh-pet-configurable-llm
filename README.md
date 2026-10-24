@@ -1,7 +1,10 @@
 # dsh-pet-configurable-llm —— 桌宠的「LLM」接入层
 
 > 项目名：`dsh-pet-configurable-llm`（可配置的 dsh-pet LLM 接入层）。  
-> DSH 里的 provider ID 仍是 `pet-brain`（兼容现有 `chatModel: pet-brain/xi`），改名只涉及仓库与目录，不动运行中的模型 ID。
+> DSH 里的 provider ID 仍是 `pet-brain`（兼容现有 `chatModel: pet-brain/xi`），改名只涉及仓库与目录，不动运行中的模型 ID。  
+> 代码标识符统一用 LLM/agent 的说法（`DshAgent`、`createPetLlmServer`、`PET_LLM_*`），
+> 只有两处保留旧名：provider ID `pet-brain`（对外契约）和旧补丁标记 `petBrainReplyPriority` /
+> `.bak-petbrain`（兼容已打过补丁的文件，见 `src/patch-dsh-pet.mjs`）。
 
 把 `dsh-pet` 的对话/碎碎念接到**同一个工作区里的专用 DSH 会话**，让桌宠复用工作区的
 `AGENTS.md` 人格、`memories/` 长期记忆和同一个模型账户；它自己的
@@ -86,7 +89,7 @@ llm-pi-ai:
       displayName: 桌宠
       api: openai-completions
       baseURL: http://127.0.0.1:8790/v1
-      apiKeyEnv: PET_BRAIN_KEY   # 或在 UI 里保存凭据
+      apiKeyEnv: PET_LLM_KEY   # 或在 UI 里保存凭据
       timeoutMs: 55000
       compat:
         supportsDeveloperRole: false
@@ -170,7 +173,8 @@ dsh-pet 的气泡位只有一个，回合结束时「工作状态」气泡（“
 
 - 网页 `lib/client.js`：两个工作状态分支加 `&& !(whisperBubbleOn && whisperText)`；
 - 桌面 `runtime/electron-helper/sprite.js`：bubble slot 改成 `whisperOn ? 'whisper' : workTerminal && workOn ? 'work' : ...`；
-- 幂等（`petBrainReplyPriority` 标记），首次修改前各自备份 `.bak-petbrain`；
+- 幂等（`petLlmReplyPriority` 标记，同时认旧标记 `petBrainReplyPriority`），首次修改前各自备份
+  `.bak-petllm`（旧的 `.bak-petbrain` 也认）；
 - dsh-pet 升级后下次启动自动重打；匹配不到只记 warning。
 
 生效：网页刷新即可；**桌面 helper 需要重启 DSH**（helper 进程启动时才读 `sprite.js`）。
@@ -216,14 +220,14 @@ dsh-pet 的气泡位只有一个，回合结束时「工作状态」气泡（“
 | 配置 | `config.json`（首次可复制 `config.example.json`） |
 | 令牌 | `state/token.txt`（首次启动生成，可手工换） |
 | 会话映射 | `state/sessions.json`（petId → DSH sessionId） |
-| 日志 | `logs/pet-brain.log` |
+| 日志 | `logs/pet-llm.log` |
 | 健康 | `GET /health`（无需令牌） |
 | 重置某只宠物的 LLM 会话 | `POST /admin/sessions/reset` `{ "petId":"main" }`（需令牌） |
 | 刷新记忆卡 | `POST /admin/memory/refresh`（需令牌） |
 | 自检 | `node src/index.mjs --check` |
 | 看护（1 分钟） | `scripts\install-revive-task.ps1` 注册任务 `pet-revive`；`-Check` 看状态，`uninstall-revive-task.ps1` 删除。它在「DSH 在、8790 不在」时拉起本服务，日志 `logs/revive.log` |
-| 进程自退 | DSH 连续 3 x 20 秒不可达即退出（`src/guard.mjs`），`PET_BRAIN_ORPHAN_GUARD=0` 可关 |
-| 失败降级 | 内部失败时返回 200 + 一句说明（`src/degraded.mjs`），避免 dsh-pet 回落到普通对话模型；`PET_BRAIN_DEGRADED_REPLY=0` 可退回 502 |
+| 进程自退 | DSH 连续 3 x 20 秒不可达即退出（`src/guard.mjs`），`PET_LLM_ORPHAN_GUARD=0` 可关 |
+| 失败降级 | 内部失败时返回 200 + 一句说明（`src/degraded.mjs`），避免 dsh-pet 回落到普通对话模型；`PET_LLM_DEGRADED_REPLY=0` 可退回 502 |
 
 DSH 桌面版每次重启换随机端口：`dsh.baseUrl` 留空时本服务会自动发现；固定端口失效时会
 再扫一次。`DSH_WEB_URL` 环境变量优先。

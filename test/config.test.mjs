@@ -20,11 +20,11 @@ test('默认配置可用，并生成/复用本地令牌', () => {
       log: { file: path.join(dir, 'log.txt') },
     }),
   );
-  const first = loadConfig({ configPath, env: { PET_BRAIN_STATE_DIR: path.join(dir, 'state') } });
+  const first = loadConfig({ configPath, env: { PET_LLM_STATE_DIR: path.join(dir, 'state') } });
   assert.equal(first.config.dsh.agentPreset, 'pet-chat');
   assert.equal(first.config.memory.root, path.join(dir, 'memories'));
   assert.equal(first.token.length >= 16, true);
-  const second = loadConfig({ configPath, env: { PET_BRAIN_STATE_DIR: path.join(dir, 'state') } });
+  const second = loadConfig({ configPath, env: { PET_LLM_STATE_DIR: path.join(dir, 'state') } });
   assert.equal(second.token, first.token);
 });
 
@@ -32,12 +32,12 @@ test('拒绝空 preset（fail-closed）', () => {
   const dir = tempDir();
   const configPath = path.join(dir, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({ dsh: { agentPreset: '' } }));
-  assert.throws(() => loadConfig({ configPath, env: { PET_BRAIN_STATE_DIR: dir } }), /agentPreset/);
+  assert.throws(() => loadConfig({ configPath, env: { PET_LLM_STATE_DIR: dir } }), /agentPreset/);
 });
 
 test('拒绝未知 defaultModel', () => {
   const dir = tempDir();
   const configPath = path.join(dir, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({ models: { xi: 'main' }, defaultModel: 'nope' }));
-  assert.throws(() => loadConfig({ configPath, env: { PET_BRAIN_STATE_DIR: dir } }), /defaultModel/);
+  assert.throws(() => loadConfig({ configPath, env: { PET_LLM_STATE_DIR: dir } }), /defaultModel/);
 });

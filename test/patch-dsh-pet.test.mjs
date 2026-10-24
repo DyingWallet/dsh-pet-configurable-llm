@@ -13,7 +13,7 @@ test('给两个工作状态分支加上「有回复时让位」', () => {
   assert.equal(result.status, 'patched');
   assert.match(result.text, /workTerminal[^\n]*workStatusEnabled && !\(whisperBubbleOn && whisperText\)/);
   assert.match(result.text, /if \(workBubbleOn && workText && cfg\.workStatusEnabled && !\(whisperBubbleOn && whisperText\)\)/);
-  assert.match(result.text, /petBrainReplyPriority/);
+  assert.match(result.text, /petLlmReplyPriority/);
 });
 
 test('幂等：第二次不再改动', () => {
@@ -29,6 +29,16 @@ test('版本变了就跳过，不抛错', () => {
   assert.equal(result.text, 'if (somethingElse) return null;');
 });
 
+test('旧标记（petBrainReplyPriority）也算已打过，不重复补丁', () => {
+  const legacy = `${SAMPLE}\n// petBrainReplyPriority: reply bubble wins over work-status bubbles\n`;
+  const result = applyReplyPriorityPatch(legacy);
+  assert.equal(result.status, 'already');
+  assert.equal(result.text, legacy);
+
+  const legacySprite = `${SPRITE_SAMPLE}\n// petBrainReplyPriority: reply bubble wins over work-status bubbles\n`;
+  assert.equal(applySpritePriorityPatch(legacySprite).status, 'already');
+});
+
 const SPRITE_SAMPLE =
   "const slot = workTerminal && workOn ? 'work' : whisperOn ? 'whisper' : balanceOn ? 'balance' : workOn ? 'work' : 'none';";
 
@@ -36,7 +46,7 @@ test('桌面 helper：回复优先于工作状态', () => {
   const result = applySpritePriorityPatch(SPRITE_SAMPLE);
   assert.equal(result.status, 'patched');
   assert.match(result.text, /whisperOn \? 'whisper' : workTerminal && workOn \? 'work'/);
-  assert.match(result.text, /petBrainReplyPriority/);
+  assert.match(result.text, /petLlmReplyPriority/);
 });
 
 test('桌面 helper 幂等', () => {

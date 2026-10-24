@@ -37,7 +37,7 @@ function sessionNotFound(error) {
   return /session\/not-found|not[- ]?found|会话不存在|session not found/i.test(message);
 }
 
-export class DshBrain {
+export class DshAgent {
   /**
    * @param {object} options
    * @param {object} options.config 完整配置

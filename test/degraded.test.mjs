@@ -14,7 +14,7 @@ test('配置了文案就用配置的', () => {
 
 test('显式关闭或 env=0 时返回空串（按错误返回）', () => {
   assert.equal(degradedText({ degradedReply: { enabled: false, text: 'x' } }), '');
-  assert.equal(degradedText({ degradedReply: { enabled: true, text: 'x' } }, { PET_BRAIN_DEGRADED_REPLY: '0' }), '');
+  assert.equal(degradedText({ degradedReply: { enabled: true, text: 'x' } }, { PET_LLM_DEGRADED_REPLY: '0' }), '');
 });
 
 test('空文案回落到默认文案', () => {

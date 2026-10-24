@@ -146,7 +146,7 @@ function normalizeConfig(raw, logger) {
   }
   if (!isObject(cfg.log)) cfg.log = { ...DEFAULTS.log };
   cfg.log.level = ['debug', 'info', 'warn', 'error'].includes(cfg.log.level) ? cfg.log.level : 'info';
-  cfg.log.file = path.resolve(cfg.log.file || path.join(PACKAGE_ROOT, 'logs', 'pet-brain.log'));
+  cfg.log.file = path.resolve(cfg.log.file || path.join(PACKAGE_ROOT, 'logs', 'pet-llm.log'));
   return cfg;
 }
 
@@ -156,15 +156,15 @@ function normalizeConfig(raw, logger) {
  */
 export function loadConfig(options = {}) {
   const env = options.env ?? process.env;
-  const configPath = path.resolve(options.configPath ?? env.PET_BRAIN_CONFIG ?? path.join(PACKAGE_ROOT, 'config.json'));
+  const configPath = path.resolve(options.configPath ?? env.PET_LLM_CONFIG ?? path.join(PACKAGE_ROOT, 'config.json'));
   const raw = readJson(configPath) ?? {};
   const cfg = normalizeConfig(raw, options.logger);
-  const stateDir = path.resolve(env.PET_BRAIN_STATE_DIR ?? path.join(PACKAGE_ROOT, 'state'));
+  const stateDir = path.resolve(env.PET_LLM_STATE_DIR ?? path.join(PACKAGE_ROOT, 'state'));
   ensureDir(stateDir);
   ensureDir(path.dirname(cfg.log.file));
   cfg.memoryService.tokenFile = path.resolve(
-    env.PET_BRAIN_MEMORY_TOKEN_FILE ?? cfg.memoryService.tokenFile ?? path.join(stateDir, 'memory.token'),
+    env.PET_LLM_MEMORY_TOKEN_FILE ?? cfg.memoryService.tokenFile ?? path.join(stateDir, 'memory.token'),
   );
-  const token = env.PET_BRAIN_TOKEN?.trim() || readOrCreateToken(stateDir, options.logger);
+  const token = env.PET_LLM_TOKEN?.trim() || readOrCreateToken(stateDir, options.logger);
   return { config: cfg, token, configPath, tokenFile: path.join(stateDir, 'token.txt'), stateDir };
 }

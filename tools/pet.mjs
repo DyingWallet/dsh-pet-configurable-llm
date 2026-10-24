@@ -18,7 +18,7 @@ const API = '/dsh-pet-7340';
 const WORK_STATES = ['thinking', 'working', 'result', 'waiting', 'success', 'error'];
 
 function readConfig() {
-  const file = process.env.PET_BRAIN_CONFIG || path.join(here, '..', 'config.json');
+  const file = process.env.PET_LLM_CONFIG || path.join(here, '..', 'config.json');
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
