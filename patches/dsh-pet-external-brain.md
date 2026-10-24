@@ -1,4 +1,13 @@
-# dsh-pet × pet-brain：`externalBrain` 小补丁（未应用）
+# dsh-pet × pet-brain：`externalBrain` 小补丁（未应用 · **已被替代，不要做**）
+
+> **2026-10-24 更新：这个方案作废。** 用户决定不碰 dsh-pet 的源码，改为在我们这侧解决：
+> - 「失败不回落普通模型」由 `src/degraded.mjs` 负责：pet-brain 内部失败时返回 200 + 降级文案，
+>   dsh-pet 看到「成功生成」就不会去试第二个候选模型（见 `src/server.mjs` 的失败分支）；
+> - 「pet-brain 不在时」由 `scripts/install-revive-task.ps1` 的 1 分钟看护 `pet-revive` 补齐；
+> - 「不用自己的 memory」本来就成立：`chatMemoryRounds: 0` 让 `sliceMemoryRounds` 返回空数组，
+>   `memory.json` 只被 `GET /chat` 拿去显示历史，不参与生成。
+>
+> 本文件仅作为历史记录保留（当时的调查结论与上游第 4 个文件的改法）。
 
 > 目的：在**不改大脑架构**的前提下，从结构上保证“桌宠不用它自己的 memory、失败也不回落成
 > 普通模型”。只动 4 个文件，约 100–150 行（含测试）。

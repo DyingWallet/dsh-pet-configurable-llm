@@ -32,6 +32,8 @@ const DEFAULTS = {
   },
   // 孤儿保护：pet-brain 跟着 DSH 生命周期（v2 自启方案 B）。3 次 x 20 秒 = 60 秒。
   lifecycle: { orphanGuard: true, probeMs: 20_000, maxMisses: 3 },
+  // 失败时的降级文案（见 degraded.mjs）：返回 200 + 这句话，dsh-pet 就不会回落到普通模型。
+  degradedReply: { enabled: true, text: '' },
   models: { xi: 'main' },
   defaultModel: 'xi',
   log: { level: 'info', file: '' },
@@ -135,6 +137,12 @@ function normalizeConfig(raw, logger) {
   }
   if (!Number.isInteger(cfg.lifecycle.maxMisses) || cfg.lifecycle.maxMisses < 1 || cfg.lifecycle.maxMisses > 60) {
     throw new Error('lifecycle.maxMisses 必须是 1–60 的整数');
+  }
+  if (!isObject(cfg.degradedReply)) cfg.degradedReply = { ...DEFAULTS.degradedReply };
+  if (typeof cfg.degradedReply.enabled !== 'boolean') cfg.degradedReply.enabled = DEFAULTS.degradedReply.enabled;
+  cfg.degradedReply.text = typeof cfg.degradedReply.text === 'string' ? cfg.degradedReply.text.trim() : '';
+  if (cfg.degradedReply.text.length > 500) {
+    throw new Error('degradedReply.text 最多 500 字');
   }
   if (!isObject(cfg.log)) cfg.log = { ...DEFAULTS.log };
   cfg.log.level = ['debug', 'info', 'warn', 'error'].includes(cfg.log.level) ? cfg.log.level : 'info';

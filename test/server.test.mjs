@@ -49,7 +49,7 @@ function fakeMemoryService() {
 // Undici（Node 内置 fetch）会拒绝一批“危险端口”；listen(0) 偶尔会撞上，重试即可。
 const BAD_PORTS = new Set([0, 6000, 6665, 6666, 6667, 6668, 6669, 10080]);
 
-function makeServer() {
+function makeServer(configPatch = {}) {
   const brain = fakeBrain();
   const memory = fakeMemory();
   const memoryService = fakeMemoryService();
@@ -58,6 +58,8 @@ function makeServer() {
     memory: { cardFile: 'D:/deepseek_workspace/memories/.meta/card.md', injectCard: true },
     models: { xi: 'main' },
     defaultModel: 'xi',
+    degradedReply: { enabled: true, text: '（降级：脑子连不上）' },
+    ...configPatch,
   };
   const server = createPetBrainServer({
     config,
@@ -70,9 +72,9 @@ function makeServer() {
   return { server, brain, memory, memoryService, config };
 }
 
-async function startServer() {
+async function startServer(configPatch = {}) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const entry = makeServer();
+    const entry = makeServer(configPatch);
     await new Promise((resolve, reject) => {
       entry.server.once('error', reject);
       entry.server.listen(0, '127.0.0.1', resolve);
@@ -154,8 +156,8 @@ test('流式对话返回 SSE delta 与 [DONE]', async () => {
   }
 });
 
-test('未知模型返回 404；生成失败返回 SSE error 帧', async () => {
-  const { server, base } = await startServer();
+test('未知模型返回 404；生成失败默认降级成 200 + 说明文案', async () => {
+  const { server, memoryService, base } = await startServer();
   try {
     const unknown = await fetch(`${base}/v1/chat/completions`, {
       method: 'POST',
@@ -164,6 +166,47 @@ test('未知模型返回 404；生成失败返回 SSE error 帧', async () => {
     });
     assert.equal(unknown.status, 404);
 
+    // 流式：失败也按正常 SSE 收尾，dsh-pet 才会认为是「成功生成」而不去回落普通模型
+    const failed = await fetch(`${base}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'xi',
+        stream: true,
+        messages: [{ role: 'user', content: '__FAIL__ 失败测试' }],
+      }),
+    });
+    assert.equal(failed.status, 200);
+    const text = await failed.text();
+    assert.match(text, /（降级：脑子连不上）/);
+    assert.match(text, /"finish_reason":"stop"/);
+    assert.match(text, /data: \[DONE\]/);
+    assert.doesNotMatch(text, /"error"/);
+
+    // 非流式同样降级
+    const plain = await fetch(`${base}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'xi', stream: false, messages: [{ role: 'user', content: '__FAIL__ 再来' }] }),
+    });
+    assert.equal(plain.status, 200);
+    const plainBody = await plain.json();
+    assert.equal(plainBody.choices[0].message.content, '（降级：脑子连不上）');
+    assert.equal(plainBody.pet_brain.degraded, true);
+    assert.equal(plainBody.pet_brain.reason, 'timeout');
+
+    // 降级文案不写进长期记忆（否则会被当成桌宠真说过的话）
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const texts = memoryService.ingested.map((entry) => entry.messages[0]?.content ?? '');
+    assert.ok(!texts.some((t) => String(t).includes('（降级：脑子连不上）')), 'degraded reply must not be ingested');
+  } finally {
+    await stop(server);
+  }
+});
+
+test('关掉降级时仍然返回 SSE error 帧（便于排查）', async () => {
+  const { server, base } = await startServer({ degradedReply: { enabled: false, text: '' } });
+  try {
     const failed = await fetch(`${base}/v1/chat/completions`, {
       method: 'POST',
       headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },

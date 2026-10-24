@@ -4,8 +4,12 @@
 //   1. 鉴权（Bearer token，仅回环地址）；
 //   2. 取最后一条 user 文本（忽略 tools / 历史 —— 桌宠自己的 memory 不参与）；
 //   3. 调 DshBrain（专用 DSH 会话），把回复按 SSE 吐回去。
+//
+// 失败时默认不报错，改用一句降级文案当正常回复（见 degraded.mjs）：dsh-pet 在 provider
+// 报错时会回落到普通对话模型，那会让桌宠「换个人格」回答，比直接说「我暂时不行」更糟。
 import { createServer } from 'node:http';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { degradedText } from './degraded.mjs';
 
 const BODY_LIMIT = 2 * 1024 * 1024;
 const SSE_PING_MS = 15_000;
@@ -243,6 +247,22 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
           const result = await brain.prompt(petId, promptText, { signal: abort.signal });
           finished = true;
           if (!result.ok) {
+            // 降级：用一句说明当正常回复，dsh-pet 就不会回落到普通对话模型。
+            const fallback = res.destroyed ? '' : degradedText(config);
+            if (fallback) {
+              logger.warn(`chat 降级 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
+              const body = {
+                id,
+                object: 'chat.completion',
+                created,
+                model,
+                choices: [{ index: 0, message: { role: 'assistant', content: fallback }, finish_reason: 'stop' }],
+                usage: { prompt_tokens: 0, completion_tokens: fallback.length, total_tokens: fallback.length },
+                pet_brain: { degraded: true, reason: result.reason ?? 'brain_error' },
+              };
+              sendJson(res, 200, body);
+              return;
+            }
             openaiError(res, 502, result.message ?? `DSH 生成失败（${result.reason}）`, {
               type: 'server_error',
               code: result.reason ?? 'brain_error',
@@ -291,6 +311,16 @@ export function createPetBrainServer({ config, logger, brain, memory, memoryServ
         finished = true;
         clearInterval(ping);
         if (!result.ok) {
+          // 降级：SSE 里塞一句说明再正常收尾，dsh-pet 收到的是「成功生成」。
+          const fallback = res.destroyed ? '' : degradedText(config);
+          if (fallback) {
+            logger.warn(`chat 降级 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
+            writeSse(res, completionChunk({ id, created, model, delta: { content: fallback } }));
+            writeSse(res, completionChunk({ id, created, model, delta: {}, finish: 'stop' }));
+            res.write('data: [DONE]\n\n');
+            res.end();
+            return;
+          }
           writeSse(res, {
             error: {
               message: result.message ?? `DSH 生成失败（${result.reason}）`,
