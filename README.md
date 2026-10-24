@@ -39,7 +39,8 @@
 
 ## DSH 版本支持
 
-**目前仅支持 DSH 桌面版 `0.2.1-rc.2`。** 其它版本未做验证，升级后请先自检：
+**已验证 `0.2.1-rc.2` 与 `0.2.1-rc.3`**（rc.3 实测：`--check` 通过、`session/prompt` 等
+RPC 形态未变）。其它版本未验证，升级后请先自检：
 
 ```powershell
 node src\index.mjs --check
