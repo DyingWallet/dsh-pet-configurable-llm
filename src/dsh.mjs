@@ -418,7 +418,16 @@ export class DshAgent {
       for (;;) {
         attempt += 1;
         try {
-          return await this.promptOnce(petId, text, options);
+          const result = await this.promptOnce(petId, text, options);
+          // DSH 把整个会话判成 blocked（turn/end 的 reason.kind=blocked，且没有正文）时，
+          // /clear、/compact、重选模型都解不开——那是会话状态坏了。换一个新会话重试一次，
+          // 不把坏会话的问题甩给用户（桌宠侧只会看到「连不上模型」）。
+          if (!result.ok && result.reason === 'blocked' && attempt <= 2) {
+            this.logger.warn(`会话被 DSH 判为 blocked，重建 ${petId}（第 ${attempt} 次）`);
+            this.forgetSession(petId);
+            continue;
+          }
+          return result;
         } catch (error) {
           if (attempt === 1 && sessionNotFound(error)) {
             this.logger.warn(`会话已失效，重建 ${petId}`);

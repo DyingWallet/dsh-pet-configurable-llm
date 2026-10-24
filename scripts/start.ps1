@@ -1,7 +1,11 @@
-# 启动模型服务（自动找 Node：环境变量 NODE_EXE -> DSH 自带 Node -> PATH）
-# 用法：
+# Start the pet-llm model service.
+#
 #   powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\start.ps1 -Check
+#
+# Node lookup order: $env:NODE_EXE -> DSH bundled node -> node on PATH.
+# Keep this file ASCII-only: Windows PowerShell 5.1 reads a BOM-less .ps1 as
+# ANSI, and any non-ASCII byte here turns into a parse error.
 param(
   [switch]$Check
 )
@@ -17,11 +21,11 @@ if ($fromPath) { $candidates += $fromPath.Source }
 
 $node = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 if (-not $node) {
-  throw '找不到 node.exe。请设置 NODE_EXE，或确认 DSH 自带 Node 路径存在。'
+  throw 'node.exe not found. Set NODE_EXE, or make sure the DSH bundled node exists.'
 }
 
 $entry = Join-Path $root 'src\index.mjs'
-if (-not (Test-Path -LiteralPath $entry)) { throw "找不到入口：$entry" }
+if (-not (Test-Path -LiteralPath $entry)) { throw "entry not found: $entry" }
 
 $arguments = @($entry)
 if ($Check) { $arguments += '--check' }
