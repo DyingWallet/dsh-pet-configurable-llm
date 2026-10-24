@@ -85,9 +85,18 @@ if ($EveryMinutes -lt 1 -or $EveryMinutes -gt 60) { throw 'EveryMinutes must be 
 
 $wscriptExe = Join-Path $env:SystemRoot 'System32\wscript.exe'
 if (-not (Test-Path -LiteralPath $wscriptExe)) { $wscriptExe = 'wscript.exe' }
-$action = New-ScheduledTaskAction -Execute $wscriptExe `
-  -Argument ('{0} {1} {2}' -f '//nologo', $runHidden, (('{0} {1}' -f $node, $revive))) `
-  -WorkingDirectory $root
+# Prefer the shared no-window launcher (CreateProcess, no ShellExecute). The VBS
+# route can be blocked by the "Open File - Security Warning" dialog.
+$launcher = Join-Path (Split-Path $root -Parent) 'tools\bin\run-hidden.exe'
+if (Test-Path -LiteralPath $launcher) {
+  $action = New-ScheduledTaskAction -Execute $launcher `
+    -Argument ('{0} {1}' -f $node, $revive) `
+    -WorkingDirectory $root
+} else {
+  $action = New-ScheduledTaskAction -Execute $wscriptExe `
+    -Argument ('{0} {1} {2}' -f '//nologo', $runHidden, (('{0} {1}' -f $node, $revive))) `
+    -WorkingDirectory $root
+}
 $settings = New-ScheduledTaskSettingsSet `
   -StartWhenAvailable `
   -AllowStartIfOnBatteries `
