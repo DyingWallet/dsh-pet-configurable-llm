@@ -13,6 +13,7 @@ import { degradedText } from './degraded.mjs';
 
 const BODY_LIMIT = 2 * 1024 * 1024;
 const SSE_PING_MS = 15_000;
+const VERSION = '0.1.0';
 
 function sendJson(res, status, body, headers = {}) {
   const payload = JSON.stringify(body);
@@ -156,10 +157,22 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
 
     try {
       if (url.pathname === '/health' && method === 'GET') {
+        // 纯探针：无鉴权，只证明进程活着。详情（DSH/会话/记忆）在 /status，需要令牌。
+        sendJson(res, 200, { ok: true, service: 'pet-llm', version: VERSION });
+        return;
+      }
+
+      if (!authorized(req, token)) {
+        openaiError(res, 401, '缺少或错误的本地访问令牌', { type: 'authentication_error', code: 'invalid_api_key' });
+        return;
+      }
+
+      if (url.pathname === '/status' && method === 'GET') {
         const dsh = await agent.health();
         sendJson(res, 200, {
           ok: dsh.reachable === true,
           service: 'pet-llm',
+          version: VERSION,
           dsh,
           memory: {
             cardFile: config.memory.cardFile,
@@ -170,11 +183,6 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
           preset: config.dsh.agentPreset,
           workspacePath: config.dsh.workspacePath,
         });
-        return;
-      }
-
-      if (!authorized(req, token)) {
-        openaiError(res, 401, '缺少或错误的本地访问令牌', { type: 'authentication_error', code: 'invalid_api_key' });
         return;
       }
 

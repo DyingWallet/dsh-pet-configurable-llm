@@ -91,14 +91,21 @@ async function stop(server) {
   await new Promise((resolve) => server.close(resolve));
 }
 
-test('health 不需要鉴权；models 需要', async () => {
+test('health 是纯探针；status 与 models 需要鉴权', async () => {
   const { server, base } = await startServer();
   try {
     const health = await fetch(`${base}/health`);
     assert.equal(health.status, 200);
     const body = await health.json();
     assert.equal(body.ok, true);
-    assert.equal(body.memory.chars, 17);
+    assert.equal(body.service, 'pet-llm');
+    assert.equal(body.memory, undefined, 'health 不再暴露内部状态');
+
+    assert.equal((await fetch(`${base}/status`)).status, 401);
+    const status = await fetch(`${base}/status`, { headers: { authorization: 'Bearer test-token' } });
+    assert.equal(status.status, 200);
+    const detail = await status.json();
+    assert.equal(detail.memory.chars, 17);
 
     const unauthorized = await fetch(`${base}/v1/models`);
     assert.equal(unauthorized.status, 401);
