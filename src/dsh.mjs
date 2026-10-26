@@ -8,8 +8,8 @@
 //   - 健康检查与端口漂移后的重建
 import fs from 'node:fs';
 import path from 'node:path';
-import { NodeApiClient, unwrap } from '../../qq-bridge/src/dsh-client.js';
-import { resolveDshBaseUrl } from '../../qq-bridge/src/lib/dsh-endpoint.mjs';
+import { NodeApiClient, unwrap } from './dsh/client.mjs';
+import { resolveDshBaseUrl } from './dsh/endpoint.mjs';
 
 const FOLLOW_REFRESH_MS = 30_000;
 
