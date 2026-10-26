@@ -569,6 +569,20 @@ export class DshAgent {
     }
   }
 
+  /** DSH 的真实模型目录（诊断用；失败返回 null）。 */
+  async modelCatalog() {
+    try {
+      const api = await this.ensureClient();
+      try {
+        return unwrap(await api.callUnary('session.modelCatalog', {}), 'session.modelCatalog');
+      } catch {
+        return unwrap(await api.callUnary('session/models', {}), 'session/models');
+      }
+    } catch {
+      return null;
+    }
+  }
+
   async close() {
     this.closed = true;
     this.muxAbort?.abort();

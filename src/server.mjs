@@ -169,6 +169,7 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
 
       if (url.pathname === '/status' && method === 'GET') {
         const dsh = await agent.health();
+        const catalog = agent.modelCatalog ? await agent.modelCatalog().catch(() => null) : null;
         sendJson(res, 200, {
           ok: dsh.reachable === true,
           service: 'pet-llm',
@@ -180,6 +181,7 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
             generatedAt: memory.getCard()?.generatedAt ?? null,
           },
           models,
+          modelCatalog: catalog,
           preset: config.dsh.agentPreset,
           workspacePath: config.dsh.workspacePath,
         });
@@ -194,6 +196,8 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
             object: 'model',
             created: 0,
             owned_by: 'pet-llm',
+            // 这个可请求 id 背后用的是哪个 DSH provider/model（没配置时为 null）
+            x_dsh: config.dsh?.model ?? null,
           })),
         });
         return;
