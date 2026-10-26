@@ -58,7 +58,7 @@ export class DshAgent {
 
     /** petId -> sessionId */
     this.sessions = new Map();
-    /** petId -> { bootstrapped: boolean, createdAt, updatedAt } */
+    /** petId -> { createdAt, updatedAt } */
     this.meta = new Map();
     /** petId -> Promise（建会话并发保护） */
     this.createLocks = new Map();
@@ -80,7 +80,6 @@ export class DshAgent {
         if (entry && typeof entry.sessionId === 'string' && entry.sessionId) {
           this.sessions.set(petId, entry.sessionId);
           this.meta.set(petId, {
-            bootstrapped: entry.bootstrapped === true,
             createdAt: Number(entry.createdAt) || 0,
             updatedAt: Number(entry.updatedAt) || 0,
           });
@@ -97,7 +96,6 @@ export class DshAgent {
       const meta = this.meta.get(petId) ?? {};
       pets[petId] = {
         sessionId,
-        bootstrapped: meta.bootstrapped === true,
         createdAt: meta.createdAt || 0,
         updatedAt: Date.now(),
       };
@@ -304,7 +302,7 @@ export class DshAgent {
       if (!sessionId) throw new Error('session/create 没有返回 sessionId');
 
       this.sessions.set(petId, sessionId);
-      this.meta.set(petId, { bootstrapped: false, createdAt: Date.now(), updatedAt: Date.now() });
+      this.meta.set(petId, { createdAt: Date.now(), updatedAt: Date.now() });
       this.saveState();
       this.follow(sessionId);
 
@@ -358,18 +356,6 @@ export class DshAgent {
     } finally {
       if (this.createLocks.get(petId) === task) this.createLocks.delete(petId);
     }
-  }
-
-  isBootstrapped(petId) {
-    return this.meta.get(petId)?.bootstrapped === true;
-  }
-
-  markBootstrapped(petId) {
-    const meta = this.meta.get(petId);
-    if (!meta) return;
-    meta.bootstrapped = true;
-    meta.updatedAt = Date.now();
-    this.saveState();
   }
 
   forgetSession(petId) {

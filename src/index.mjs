@@ -5,7 +5,6 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { createLogger } from './logger.mjs';
-import { buildMemoryCard } from './memory-card.mjs';
 import { createMemoryService } from './memory.mjs';
 import { patchDshPetClient } from './patch-dsh-pet.mjs';
 import { DshAgent } from './dsh.mjs';
@@ -32,28 +31,7 @@ try {
   logger.warn(`dsh-pet 回复优先级补丁失败：${error?.message ?? error}`);
 }
 
-let card = buildMemoryCard({
-  root: loaded.config.memory.root,
-  cardFile: loaded.config.memory.cardFile,
-  maxChars: loaded.config.memory.maxChars,
-  name: loaded.config.identity.name,
-});
-const memory = {
-  getCard: () => card,
-  refresh: () => {
-    card = buildMemoryCard({
-      root: loaded.config.memory.root,
-      cardFile: loaded.config.memory.cardFile,
-      maxChars: loaded.config.memory.maxChars,
-      name: loaded.config.identity.name,
-    });
-    logger.info(`记忆卡已刷新：${card.chars} 字，${card.files.length} 个来源`);
-    return card;
-  },
-};
-
 logger.info(`配置：${loaded.configPath}`);
-logger.info(`记忆卡：${card.chars} 字，${card.files.length} 个来源 -> ${loaded.config.memory.cardFile}`);
 logger.info(`模型：${Object.keys(loaded.config.models).join(', ')}（默认 ${loaded.config.defaultModel}）`);
 
 if (CHECK) {
@@ -70,7 +48,6 @@ if (CHECK) {
         tokenFile: loaded.tokenFile,
         workspacePath: loaded.config.dsh.workspacePath,
         preset: loaded.config.dsh.agentPreset,
-        memoryCard: { chars: card.chars, files: card.files, file: loaded.config.memory.cardFile },
         dsh: health,
         listen: loaded.config.listen,
       },
@@ -91,7 +68,6 @@ const server = createPetLlmServer({
   config: loaded.config,
   logger,
   agent,
-  memory,
   memoryService,
   token: loaded.token,
 });
@@ -129,22 +105,12 @@ const guardEnabled = loaded.config.lifecycle.orphanGuard && process.env.PET_LLM_
 if (guardEnabled) orphanGuard.start();
 else logger.warn('孤儿保护已关闭（lifecycle.orphanGuard=false 或 PET_LLM_ORPHAN_GUARD=0）');
 
-const refreshTimer = setInterval(() => {
-  try {
-    memory.refresh();
-  } catch (error) {
-    logger.warn(`记忆卡定时刷新失败：${error?.message ?? error}`);
-  }
-}, loaded.config.memory.refreshMs);
-refreshTimer.unref?.();
-
 let closing = false;
 async function shutdown(signal) {
   if (closing) return;
   closing = true;
   logger.info(`收到 ${signal}，正在关闭…`);
   orphanGuard.stop();
-  clearInterval(refreshTimer);
   await new Promise((resolve) => server.close(() => resolve()));
   await agent.close();
   logger.info('已关闭');

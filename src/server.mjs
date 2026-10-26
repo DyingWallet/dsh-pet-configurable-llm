@@ -94,20 +94,6 @@ function nowLine() {
   })}】`;
 }
 
-function bootstrapText(card, userText, name = '桌宠') {
-  return (
-    `【${name}的长期记忆 · 启动卡】\n` +
-    `你是${name}。下面是你的长期记忆摘录，来源是 memories/；需要细节时用只读工具读 memories/index.md 或对应文件。\n` +
-    '回复保持 1–3 句、口语、不用 Markdown；不要把【现在…】或【桌宠形态】写进回复；不要主动输出凭据、QQ 号或本机路径。\n\n' +
-    (card?.text ?? '（记忆卡为空）') +
-    '\n\n' +
-    nowLine() +
-    '\n【桌宠形态】你的回答会直接显示在桌面气泡里，10 秒后消失。\n' +
-    '\n【本轮用户说】\n' +
-    userText
-  );
-}
-
 function writeSse(res, payload) {
   if (res.destroyed || res.writableEnded) return false;
   try {
@@ -137,7 +123,7 @@ function completionChunk({ id, created, model, delta, finish = null }) {
  * @param {{recallBlock: Function, ingest: Function}} [options.memoryService]
  * @param {string} options.token
  */
-export function createPetLlmServer({ config, logger, agent, memory, memoryService, token }) {
+export function createPetLlmServer({ config, logger, agent, memoryService, token }) {
   const models = Object.keys(config.models);
 
   const server = createServer(async (req, res) => {
@@ -175,11 +161,6 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
           service: 'pet-llm',
           version: VERSION,
           dsh,
-          memory: {
-            cardFile: config.memory.cardFile,
-            chars: memory.getCard()?.chars ?? 0,
-            generatedAt: memory.getCard()?.generatedAt ?? null,
-          },
           models,
           modelCatalog: catalog,
           preset: config.dsh.agentPreset,
@@ -237,14 +218,13 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
         const stream = body.stream === true;
         const id = `chatcmpl-${randomUUID()}`;
         const created = Math.floor(Date.now() / 1000);
-        const bootstrap = config.memory.injectCard === true && !agent.isBootstrapped(petId);
 
-        // memd：先召回（失败只当没有记忆），再把本轮用户消息写进短期层。
+        // 记忆全部从 memd 来（recall + live）；人格由 AGENTS.md + preset persona 承担，
+        // 所以这里不再有「启动卡」这层。
         const recall = memoryService ? await memoryService.recallBlock(body.messages).catch(() => '') : '';
         if (memoryService) void memoryService.ingest(body.messages, petId).catch(() => {});
 
-        const basePrompt = bootstrap ? bootstrapText(memory.getCard(), userText, config.identity?.name ?? '桌宠') : userText;
-        const promptText = recall ? `${recall}\n\n${basePrompt}` : basePrompt;
+        const promptText = recall ? `${recall}\n\n${userText}` : userText;
         const abort = new AbortController();
         let finished = false;
         res.on('close', () => {
@@ -252,7 +232,7 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
         });
 
         logger.info(
-          `chat model=${model} pet=${petId} stream=${stream} bootstrap=${bootstrap} chars=${userText.length}`,
+          `chat model=${model} pet=${petId} stream=${stream} chars=${userText.length}`,
         );
 
         if (!stream) {
@@ -282,7 +262,6 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
             logger.warn(`chat 失败 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
             return;
           }
-          if (bootstrap) agent.markBootstrapped(petId);
           const text = result.text.trim();
           if (memoryService) void memoryService.ingest([{ role: 'assistant', content: text }], petId).catch(() => {});
           sendJson(res, 200, {
@@ -345,18 +324,11 @@ export function createPetLlmServer({ config, logger, agent, memory, memoryServic
           logger.warn(`chat 失败 pet=${petId} reason=${result.reason} ${result.message ?? ''}`);
           return;
         }
-        if (bootstrap) agent.markBootstrapped(petId);
         if (memoryService) void memoryService.ingest([{ role: 'assistant', content: result.text.trim() }], petId).catch(() => {});
         writeSse(res, completionChunk({ id, created, model, delta: {}, finish: 'stop' }));
         res.write('data: [DONE]\n\n');
         res.end();
         logger.info(`chat 完成 pet=${petId} ms=${Date.now() - startedAt} chars=${result.text.trim().length}`);
-        return;
-      }
-
-      if (url.pathname === '/admin/memory/refresh' && method === 'POST') {
-        const card = memory.refresh();
-        sendJson(res, 200, { ok: true, chars: card.chars, generatedAt: card.generatedAt, files: card.files });
         return;
       }
 

@@ -105,7 +105,7 @@ test('health 是纯探针；status 与 models 需要鉴权', async () => {
     const status = await fetch(`${base}/status`, { headers: { authorization: 'Bearer test-token' } });
     assert.equal(status.status, 200);
     const detail = await status.json();
-    assert.equal(detail.memory.chars, 17);
+    assert.equal(detail.ok, true);
 
     const unauthorized = await fetch(`${base}/v1/models`);
     assert.equal(unauthorized.status, 401);
@@ -114,31 +114,6 @@ test('health 是纯探针；status 与 models 需要鉴权', async () => {
     assert.equal(models.status, 200);
     const list = await models.json();
     assert.deepEqual(list.data.map((item) => item.id), ['xi']);
-  } finally {
-    await stop(server);
-  }
-});
-
-test('非流式对话：第一轮注入记忆卡，第二轮不再注入', async () => {
-  const { server, agent, base } = await startServer();
-  try {
-    const request = () =>
-      fetch(`${base}/v1/chat/completions`, {
-        method: 'POST',
-        headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'xi', stream: false, messages: [{ role: 'user', content: '在吗' }] }),
-      });
-
-    const first = await request();
-    assert.equal(first.status, 200);
-    const firstBody = await first.json();
-    assert.equal(firstBody.choices[0].message.content, '你好，我在。');
-    assert.match(agent.calls[0].text, /MEMORY-CARD-70903/);
-    assert.equal(agent.bootstrapped.has('main'), true);
-
-    const second = await request();
-    assert.equal(second.status, 200);
-    assert.doesNotMatch(agent.calls[1].text, /MEMORY-CARD-70903/);
   } finally {
     await stop(server);
   }
@@ -242,32 +217,12 @@ test('记忆服务：召回块进 prompt，用户与回复都入库', async () =
     });
     assert.equal(response.status, 200);
     assert.match(agent.calls[0].text, /RECALL-BLOCK-爵士乐/);
-    assert.ok(
-      agent.calls[0].text.indexOf('RECALL-BLOCK-爵士乐') < agent.calls[0].text.indexOf('MEMORY-CARD-70903'),
-      'recall block goes before the bootstrap card',
-    );
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     const roles = memoryService.ingested.map((entry) => entry.messages[0]?.role ?? entry.messages?.role);
     const texts = memoryService.ingested.map((entry) => entry.messages[0]?.content ?? entry.messages?.text);
     assert.ok(texts.some((text) => String(text).includes('放点爵士')), 'user message ingested');
     assert.ok(texts.some((text) => String(text).includes('你好，我在。')), 'assistant reply ingested');
-  } finally {
-    await stop(server);
-  }
-});
-
-test('记忆卡刷新接口', async () => {
-  const { server, base } = await startServer();
-  try {
-    const response = await fetch(`${base}/admin/memory/refresh`, {
-      method: 'POST',
-      headers: { authorization: 'Bearer test-token' },
-    });
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.ok, true);
-    assert.equal(body.chars, 24);
   } finally {
     await stop(server);
   }

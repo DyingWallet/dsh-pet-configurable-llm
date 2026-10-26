@@ -20,13 +20,13 @@ const DEFAULTS = {
     timeoutMs: 55_000,
     rediscoverMs: 15_000,
   },
-  memory: { root: '', cardFile: '', maxChars: 16_000, injectCard: true, refreshMs: 600_000 },
+  memory: { root: '', maxChars: 16_000 },
   memoryService: {
     endpoint: 'http://127.0.0.1:8787',
     tokenFile: '',
     scene: 'pet',
-    recallK: 3,
-    recallMaxChars: 800,
+    recallK: 5,
+    recallMaxChars: 1500,
     timeoutMs: 800,
     ingest: true,
   },
@@ -99,12 +99,7 @@ function normalizeConfig(raw, logger) {
     throw new Error('dsh.timeoutMs 必须是 5000–120000 的毫秒数');
   }
   if (!isObject(cfg.memory)) throw new Error('memory 必须是对象');
-  const memoryRoot = path.resolve(cfg.memory.root || path.join(cfg.dsh.workspacePath, 'memories'));
-  cfg.memory.root = memoryRoot;
-  cfg.memory.cardFile = path.resolve(cfg.memory.cardFile || path.join(memoryRoot, '.meta', 'pet-memory-card.md'));
-  if (!Number.isFinite(cfg.memory.maxChars) || cfg.memory.maxChars < 1_000) {
-    throw new Error('memory.maxChars 必须 >= 1000');
-  }
+  cfg.memory.root = path.resolve(cfg.memory.root || path.join(cfg.dsh.workspacePath, 'memories'));
   if (!isObject(cfg.memoryService)) throw new Error('memoryService 必须是对象');
   cfg.memoryService.endpoint = String(cfg.memoryService.endpoint || DEFAULTS.memoryService.endpoint).replace(/\/+$/, '');
   cfg.memoryService.scene = String(cfg.memoryService.scene || 'pet');
