@@ -955,7 +955,8 @@ export class NodeApiClient extends AbstractApiClient {
 export function unwrap(response, label) {
   if (response.result.ok) return response.result.value;
   const { code, message } = response.result.error;
-  throw new Error(`${label} failed: ${code}: ${message}`);
+  // 错误码挂在 Error 上：调用方（如会话重建）按 code 判断，不再靠文案匹配。
+  throw Object.assign(new Error(`${label} failed: ${code}: ${message}`), { code, label });
 }
 
 /** 在会话事件流里收集一次 turn 的 assistant 文本（按 turn 分组）。 */

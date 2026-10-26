@@ -33,8 +33,8 @@ function reasonKind(reason) {
 }
 
 function sessionNotFound(error) {
-  const message = String(error?.message ?? error ?? '');
-  return /session\/not-found|not[- ]?found|会话不存在|session not found/i.test(message);
+  // 只认 RPC 错误码：DSH 改文案不会让重建逻辑失灵。
+  return error?.code === 'session/not-found';
 }
 
 export class DshAgent {
@@ -435,6 +435,12 @@ export class DshAgent {
             this.forgetSession(petId);
             continue;
           }
+          // 会话不存在（DSH 重启后丢了）：按 RPC 错误码重建，不再匹配错误文案。
+          if (!result.ok && result.reason === 'error' && result.code === 'session/not-found' && attempt <= 2) {
+            this.logger.warn(`会话不存在，重建 ${petId}（第 ${attempt} 次）`);
+            this.forgetSession(petId);
+            continue;
+          }
           return result;
         } catch (error) {
           if (attempt === 1 && sessionNotFound(error)) {
@@ -508,6 +514,7 @@ export class DshAgent {
             text: '',
             reason: 'error',
             message: error instanceof Error ? error.message : String(error),
+            code: error?.code,
           });
         }
       })();
