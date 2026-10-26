@@ -341,7 +341,11 @@ export class DshAgent {
             `会话模型：${selected?.selected?.provider ?? model.provider}/${selected?.selected?.model ?? model.model}`,
           );
         } catch (error) {
-          this.logger.warn(`会话模型设置失败（将用 DSH 默认模型）：${error?.message ?? error}`);
+          // 显式报错：静默落回 DSH 默认模型会让整理/桌宠跑在非预期的模型上。
+          this.forgetSession(petId);
+          throw new Error(
+            `设置会话模型失败（${model.provider}/${model.model}）：${error?.message ?? error}`,
+          );
         }
       }
 
