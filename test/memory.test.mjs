@@ -34,17 +34,12 @@ function tokenFileInTempDir() {
   return tokenFile;
 }
 
-test('recallBlock 把 live 放在长期记忆之前，并带上时间', async () => {
+test('recallBlock 取服务端渲染好的 block，并带上 format 与预算', async () => {
   const { seen, server, base } = await startMemd(() => ({
     keywords: [],
-    results: [{ render: { text: '长期记忆里的爵士乐' }, stage: 'short' }],
-    live: [
-      {
-        render: { text: '我们在聊人是不是被经历塑造的' },
-        updated_at: '2026-10-24T14:45:00.000Z',
-        stage: 'short',
-      },
-    ],
+    results: [],
+    live: [],
+    block: '【最近在聊的】\n- 14:45 我们在聊人是不是被经历塑造的\n\n【长期记忆】\n- 长期记忆里的爵士乐',
   }));
   try {
     const service = createMemoryService(
@@ -52,20 +47,22 @@ test('recallBlock 把 live 放在长期记忆之前，并带上时间', async ()
       null,
     );
     const block = await service.recallBlock([{ role: 'user', content: '在吗' }]);
-    assert.match(block, /对方那边刚刚在聊的/);
-    assert.match(block, /- \d{2}:\d{2} 我们在聊/);
-    assert.ok(block.indexOf('经历塑造') < block.indexOf('爵士乐'), 'live block comes before long-term memory');
+    assert.match(block, /最近在聊的/);
+    assert.match(block, /长期记忆里的爵士乐/);
+    assert.equal(seen[0].payload.format, 'block');
+    assert.equal(seen[0].payload.max_chars, 1500);
     assert.deepEqual(seen[0].payload.live, { k: 6, minutes: 30, scenes: ['main'] });
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
 });
 
-test('live 里没有消息时只返回长期记忆块', async () => {
+test('没有 live 时服务端只给长期记忆块', async () => {
   const { server, base } = await startMemd(() => ({
     keywords: ['爵士'],
-    results: [{ render: { text: '长期记忆里的爵士乐' }, stage: 'short' }],
+    results: [],
     live: [],
+    block: '【长期记忆】\n- 长期记忆里的爵士乐',
   }));
   try {
     const service = createMemoryService(
@@ -73,7 +70,7 @@ test('live 里没有消息时只返回长期记忆块', async () => {
       null,
     );
     const block = await service.recallBlock([{ role: 'user', content: '放点爵士' }]);
-    assert.equal(block.includes('对方那边刚刚在聊的'), false);
+    assert.equal(block.includes('最近在聊的'), false);
     assert.match(block, /长期记忆里的爵士乐/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
