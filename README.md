@@ -205,9 +205,9 @@ dsh-pet 的气泡位只有一个，回合结束时「工作状态」气泡（“
 
 ## 记忆服务（memd）
 
-除记忆卡之外，本服务还接 `memory-hub`（`memd`）：
+本服务把 `memory-hub`（`memd`）当作**可选的记忆后端**：
 
-- `src/memory.mjs`：每轮 `POST /v1/recall`（scene=`pet`）把相关记忆拼在 prompt 最前；同时 `POST /v1/ingest` 上报用户消息与回复（短期层，50 条/批，失败静默）。
+- `src/memory.mjs`：每轮三路取数——`POST /v1/recall`（scene=`pet`，`format:"block"` 由 memd 渲染记忆块）、`live` 侧通道（主会话最近的短期聊天）、`POST /v1/recent`（最近写下的长期记忆）；同时 `POST /v1/ingest` 上报用户消息与回复（短期层，50 条/批，失败静默）。
 - 令牌在 `state/memory.token`（surface `pet`，scopes `main/qq:owner/pet`，无 `work:read`）。
 - 可见范围：owner 的 `main`/`qq:owner` + shared；**不含**工作/财务、群、第三人私聊。
 - 配置段：

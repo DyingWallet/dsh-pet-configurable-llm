@@ -49,9 +49,12 @@ test('recallBlock 取服务端渲染好的 block，并带上 format 与预算', 
     const block = await service.recallBlock([{ role: 'user', content: '在吗' }]);
     assert.match(block, /最近在聊的/);
     assert.match(block, /长期记忆里的爵士乐/);
-    assert.equal(seen[0].payload.format, 'block');
-    assert.equal(seen[0].payload.max_chars, 1500);
-    assert.deepEqual(seen[0].payload.live, { k: 6, minutes: 30, scenes: ['main'] });
+    // recall 与 recent 是并发发出的，seen 的顺序不保证。
+    const recall = seen.find((item) => item.url === '/v1/recall');
+    assert.ok(recall, 'must call /v1/recall');
+    assert.equal(recall.payload.format, 'block');
+    assert.equal(recall.payload.max_chars, 1500);
+    assert.deepEqual(recall.payload.live, { k: 6, minutes: 30, scenes: ['main'] });
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -85,8 +88,11 @@ test('live:false 时不再向 memd 请求 live', async () => {
       null,
     );
     await service.recallBlock([{ role: 'user', content: '在吗' }]);
-    assert.equal(seen.length, 1);
-    assert.equal(seen[0].payload.live, undefined);
+    const recall = seen.find((item) => item.url === '/v1/recall');
+    assert.ok(recall, 'must call /v1/recall');
+    assert.equal(recall.payload.live, undefined);
+    // recent 是第三路（方案 4.2），和 live 开关无关，所以它照样会发。
+    assert.ok(seen.some((item) => item.url === '/v1/recent'), 'recent channel is requested too');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

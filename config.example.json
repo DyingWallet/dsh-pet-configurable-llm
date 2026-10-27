@@ -19,8 +19,7 @@
     "rediscoverMs": 15000
   },
   "memory": {
-    "root": "",
-    "maxChars": 16000
+    "root": ""
   },
   "models": {
     "xi": "main"
@@ -34,8 +33,11 @@
     "endpoint": "http://127.0.0.1:8787",
     "tokenFile": "",
     "scene": "pet",
-    "recallK": 3,
-    "recallMaxChars": 800,
+    "recallK": 5,
+    "recallMaxChars": 1500,
+    "recent": {
+      "k": 5
+    },
     "live": {
       "k": 6,
       "minutes": 30,

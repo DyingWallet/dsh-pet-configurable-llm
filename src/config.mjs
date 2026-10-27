@@ -20,13 +20,15 @@ const DEFAULTS = {
     timeoutMs: 55_000,
     rediscoverMs: 15_000,
   },
-  memory: { root: '', maxChars: 16_000 },
+  memory: { root: '' },
   memoryService: {
     endpoint: 'http://127.0.0.1:8787',
     tokenFile: '',
     scene: 'pet',
     recallK: 5,
     recallMaxChars: 1500,
+    // 最近写下的长期记忆（recall 不擅长「最近发生了什么」，这路补上）。
+    recent: { k: 5 },
     timeoutMs: 800,
     ingest: true,
   },

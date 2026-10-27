@@ -41,6 +41,25 @@ export function createMemoryService(config, logger) {
           maxChars: Number(cfg.live?.maxChars) || 400,
         };
 
+  // "Recent" = 最近写下的长期记忆。recall 擅长「跟这句话相关的」，不擅长
+  // 「最近发生了什么」——两路互补。`"recent": false` 可关。
+  const recent =
+    cfg.recent === false
+      ? undefined
+      : { k: Number(cfg.recent?.k) || 5 };
+
+  async function recentBlock() {
+    if (!recent) return '';
+    try {
+      // 和 recall 一样走服务端渲染：`format:"block"` 拿回已拼好的段落，
+      // 客户端不再自己拼标题和截断。
+      const data = await call('/v1/recent', { k: recent.k, scene, format: 'block' });
+      return typeof data?.block === 'string' ? data.block : '';
+    } catch {
+      return '';
+    }
+  }
+
   function readToken() {
     try {
       return fs.readFileSync(cfg.tokenFile, 'utf8').trim();
@@ -72,15 +91,19 @@ export function createMemoryService(config, logger) {
       if (usable.length === 0) return '';
       // 记忆块由 memd 渲染（format: "block"）：标题、时间、截断、owner 标记都在服务端，
       // 这里不再自己拼——三端共用同一份格式。
-      const data = await call('/v1/recall', {
-        messages: usable,
-        k: recallK,
-        max_chars: maxChars,
-        scene,
-        ...(live ? { live: { k: live.k, minutes: live.minutes, scenes: live.scenes } } : {}),
-        format: 'block',
-      });
-      return typeof data?.block === 'string' ? data.block : '';
+      const [data, recentText] = await Promise.all([
+        call('/v1/recall', {
+          messages: usable,
+          k: recallK,
+          max_chars: maxChars,
+          scene,
+          ...(live ? { live: { k: live.k, minutes: live.minutes, scenes: live.scenes } } : {}),
+          format: 'block',
+        }),
+        recentBlock(),
+      ]);
+      const block = typeof data?.block === 'string' ? data.block : '';
+      return [block, recentText].filter((part) => part.length > 0).join('\n\n');
     } catch (error) {
       logger?.debug?.(`记忆召回失败：${error?.message ?? error}`);
       return '';
